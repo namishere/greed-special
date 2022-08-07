@@ -1,6 +1,7 @@
 GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
+local level = game:GetLevel()
 local rng = RNG()
 local seed = game:GetSeeds()
 
@@ -90,7 +91,6 @@ function mod:scheduleForUpdate(foo, delay, callback)
 end
 
 function mod:UpdateRoomDisplayFlags(initroomdesc)
-	local level = game:GetLevel()
 	local roomdesc = level:GetRoomByIdx(initroomdesc.GridIndex)
 	local roomdata = roomdesc.Data
 	if roomdata and level:GetRoomByIdx(roomdesc.GridIndex).DisplayFlags
@@ -129,6 +129,13 @@ function mod:DoPlanetarium(level, levelStage)
 		level:SetStage(levelStage, stageType)
 	end
 end
+
+mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
+	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
+		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
+		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
+	end
+end)
 
 function mod:Init()
 	debugPrint("init")
