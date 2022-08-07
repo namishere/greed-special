@@ -309,7 +309,11 @@ function mod:Init()
 		end
 
 		if MinimapAPI then
-			MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {SpecialRoom[mod.roomchoice].minimapIcon}
+			local icon = SpecialRoom[mod.roomchoice].minimapIcon
+			if mod.roomchoice == RoomType.ROOM_CHALLENGE and level:GetRoomByIdx(CURSE_ID).Data.Subtype == 1 then
+				icon = "BossAmbushRoom"
+			end
+			MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
 		end
 	end
 end
