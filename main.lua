@@ -6,24 +6,26 @@ local rng = RNG()
 local seed = game:GetSeeds()
 
 --TODO: Shop is displayed as visited when starting a new game; can't figure out how to fix
---		Need to rework fadein shit to account for something like forget me now on stage 1
---		- Done
 --		Probably rework planetarium code
 --		- Did a little bit
 --		Test test test test
 --		Ideally figure out a way to either avoid the backdrop changing when entering a new level
 --		- (or figure out a new solution that doesn't require us to warp between rooms)
 --		Implement proper challenge waves
---		- Waves imported from base game, shop is using cathedral waves rn
+--		- Waves imported from base game, shop is using cathedral waves
 --		Clean clean CLEAN THIS SHIT
---		Music callback mod doesn't properly handle challenge room
+--		- Shit reasonably cleaned
 --		Should we try and add support for mods to add new room variants?
 --		Need to ensure compatibility with alt path mod, waiting on team compliance version
+--		- Compatible with Gamonymous version
 
 local CURSE_ID = 83
 local START_BOTTOM_ID = 97
 local START_TOP_ID = 84
+
 local CENTER_POS = Vector(320.0, 280.0)
+local STAIRCASE_POS = Vector(440.0 ,160.0)
+local ZERO_POS = Vector(0.0, 0.0)
 
 local DoorVariant = {
 	BOMB = 0,
@@ -53,8 +55,7 @@ local SpecialRoom = {
 mod.debug = false
 mod.roomchoice = 0
 mod.firstrun = false
-mod.runstarted = false
-mod.runseed = 0 -- to handle restarts
+mod.runseed = 0 -- to tell if a new run has started
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -111,11 +112,10 @@ function mod:UpdateRoomDisplayFlags(initroomdesc)
 end
 
 function mod:DoPlanetarium(level, levelStage)
-	debugPrint("trying planetarium")
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
-		Isaac.ExecuteCommand("goto 6 7 0")
+		level:ChangeRoom(START_BOTTOM_ID)
 		local stageType = level:GetStageType()
 		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
@@ -123,10 +123,11 @@ function mod:DoPlanetarium(level, levelStage)
 			newRoom.Data = gotor.Data
 			newRoom.DisplayFlags = 5
 			newRoom.Flags = 0
-			debugPrint("planetarium spawned")
 		end
 		level:SetStage(levelStage, stageType)
+		return true
 	end
+	return false
 end
 
 function mod:PickSpecialRoom(stage)
@@ -197,7 +198,6 @@ function mod:PickSpecialRoom(stage)
 end
 
 function mod:Init()
-	debugPrint("init")
 	local level = game:GetLevel()
 	local stage = level:GetStage()
 	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
@@ -205,26 +205,32 @@ function mod:Init()
 
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),0)
 
-	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
-
+	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
-		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
+		level:RemoveCurses(Level Curse.CURSE_OF_MAZE)
 		hascurseofmaze = true
+	end
+
+	local stairway = false
+	for i = 0, game:GetNumPlayers() - 1 do
+		if Isaac.GetPlayer(i):HasCollectible(CollectibleType.COLLECTIBLE_STAIRWAY) then
+			stairway = true
+			break
+		end
 	end
 
 	local planetarium = GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance())
 	if planetarium and not gplan then
-		mod:DoPlanetarium(level, stage)
+		planetarium = mod:DoPlanetarium(level, stage)
 	end
+
+	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
 
 	if mod.roomchoice > 0 then
 		debugPrint(mod.roomchoice .. " " .. tostring(SpecialRoom[mod.roomchoice].string) .. " " .. tostring(SpecialRoom[mod.roomchoice].maxVariant))
 		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. rng:RandomInt(SpecialRoom[mod.roomchoice].maxVariant))
 
 		local doorData = door:GetSaveState()
-		--local doorVariant = 0
-		--debugPrint(dump(door:GetSaveState()))
-		--door:SetRoomTypes(RoomType.ROOM_DEFAULT, mod.roomchoice) -- seems to crash randomly
 		door.TargetRoomType = mod.roomchoice
 		door:SetVariant(SpecialRoom[mod.roomchoice].variant)
 
@@ -233,16 +239,8 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 
-			local stairway = false
-			for i = 0, game:GetNumPlayers() - 1 do
-				if Isaac.GetPlayer(i):HasCollectible(CollectibleType.COLLECTIBLE_STAIRWAY) then
-					stairway = true
-					break
-				end
-			end
-			debugPrint(tostring(mod.runstarted) .. " " .. seed:GetStartSeed() .. " " .. mod.runseed)
 			-- Normal fadein (game start)
-			if stage == LevelStage.STAGE1_GREED and (mod.runstarted == false or seed:GetStartSeed() ~= mod.runseed) then
+			if stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
 				local oldShop = level:GetRoomByIdx(70,0)
 				local oldData = oldShop.Data
 				Isaac.ExecuteCommand("goto s.default.0")
@@ -252,9 +250,11 @@ function mod:Init()
 				if not mod.firstrun then --otherwise it doesn't work when starting the first game of the session......
 					game:ChangeRoom(START_TOP_ID)
 				end
+
 				if stairway then
 					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
 				end
+
 				mod:scheduleForUpdate(function()
 					oldShop.Data = oldData
 					oldShop.VisitedCount = 0
@@ -263,12 +263,11 @@ function mod:Init()
 					level:UpdateVisibility()
 
 					mod.firstrun = true
-					mod.runstarted = true
 				end, 0, ModCallbacks.MC_POST_RENDER)
-
-			else -- mosaic (level transition)
+			-- mosaic (level transition)
+			else
+				-- do this here so that the door graphics are updated..
 				mod:scheduleForUpdate(function()
-					-- do this here so that the door graphics are updated..
 					level:ChangeRoom(START_BOTTOM_ID) --TODO: Single crash here at womb w/ sacrifice room & planetarium spawn. Can't reproduce
 					game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
 					level:GetRoomByIdx(START_TOP_ID).VisitedCount = 1
@@ -278,7 +277,7 @@ function mod:Init()
 
 					--YES this is immediately removed by changing rooms below but if I don't do it here it doesn't look right
 					if stairway then
-						Isaac.Spawn(1000,156,1,Vector(440,160),Vector(0,0),nil)
+						Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
 					end
 
 					Isaac.GetPlayer().Position = CENTER_POS
@@ -289,15 +288,11 @@ function mod:Init()
 					end
 				end, 0, ModCallbacks.MC_POST_RENDER)
 
+				-- Refresh room to fix changes made not being saved when exiting room
+				-- Causes various grid/backdrop details to shift a bit after fadein. sad!
 				mod:scheduleForUpdate(function()
-					-- Refresh room to fix changes made not being saved when exiting room
-					-- Causes various grid/backdrop details to shift a bit after fadein. sad!
 					level:ChangeRoom(START_BOTTOM_ID)
 					level:GetRoomByIdx(START_BOTTOM_ID).VisitedCount = 1
-
-					if stairway then
-						Isaac.Spawn(1000,156,1,Vector(440,160),Vector(0,0),nil)
-					end
 
 					Isaac.GetPlayer().Position = CENTER_POS
 					if game:GetNumPlayers() > 1 then
@@ -310,18 +305,21 @@ function mod:Init()
 
 			if MinimapAPI then
 				local icon = SpecialRoom[mod.roomchoice].minimapIcon
-				if mod.roomchoice == RoomType.ROOM_CHALLENGE and level:GetRoomByIdx(CURSE_ID).Data.Subtype == 1 then
+				if mod.roomchoice == RoomType.ROOM_CHALLENGE and curseRoom.Data.Subtype == 1 then
 					icon = "BossAmbushRoom"
 				end
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
 			end
-
-			if planetarium then
-				mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
-				level:GetRoomByIdx(72).VisitedCount = 0
-			end
-			level:UpdateVisibility()
 		end
+	end
+
+	if planetarium then
+		if stairway then
+			Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
+		end
+
+		mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
+		level:GetRoomByIdx(72).VisitedCount = 0
 	end
 
 	if hascurseofmaze then
@@ -329,6 +327,8 @@ function mod:Init()
 			level:AddCurse(LevelCurse.CURSE_OF_MAZE)
 		end, 0, ModCallbacks.MC_POST_UPDATE)
 	end
+
+	level:UpdateVisibility()
 end
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
@@ -350,13 +350,10 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
 		PlanetariumChance:updatePlanetariumChance()
 	end
-	mod.runstarted = true
+
 	mod.runseed = seed:GetStartSeed()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.runstarted = false
 	mod.runseed = 0
 end)
-
-
