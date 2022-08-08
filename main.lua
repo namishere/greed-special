@@ -52,7 +52,6 @@ local SpecialRoom = {
 
 mod.debug = false
 mod.roomchoice = 0
---mod.savedrooms={}
 mod.firstrun = false
 mod.runstarted = false
 mod.runseed = 0 -- to handle restarts
@@ -130,79 +129,91 @@ function mod:DoPlanetarium(level, levelStage)
 	end
 end
 
-mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
-	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
-		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
-		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
+function mod:PickSpecialRoom(stage)
+	--TODO: convert into flag system
+	local allPlayersFullHealth = true
+	local allPlayersRedHeartsOnly = true
+	local allPlayersSoulHeartsOnly = true
+
+	local redHeartCount = 0
+	local soulHeartCount = 0
+	local keyCountTwoOrMore = (Isaac.GetPlayer(i):GetNumKeys() >= 2)
+	local coinCountFiveOrMore = (Isaac.GetPlayer(i):GetNumCoins() >= 5)
+
+	for i = 0, Game():GetNumPlayers() - 1 do
+		local player = Isaac.GetPlayer(i)
+		if allPlayersFullHealth and player:GetMaxHearts() > player:GetHearts() + player:GetSoulHearts() then --bone hearts ignored
+			allPlayersFullHealth = false
+		end
+
+		redHeartCount = math.max(redHeartCount, player:GetHearts())
+		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
 	end
-end)
+
+	allPlayersRedHeartsOnly = (soulHeartCount == 0)
+	allPlayersSoulHeartsOnly = (redHeartCount == 0)
+
+	-- Special Room
+	if rng:RandomInt(7) == 0 or (allPlayersFullHealth and rng:RandomInt(4) == 0) then
+		if rng:RandomInt(50) == 0 or (keyCountTwoOrMore and rng:RandomInt(5) == 0) then
+			return RoomType.ROOM_DICE
+		else
+			return RoomType.ROOM_SACRIFICE
+		end
+	elseif rng:RandomInt(20) == 0 then
+		return RoomType.ROOM_LIBRARY
+	-- TODO: add 1/4 chance if devil deal visited?
+	elseif rng:RandomInt(2) == 1 then
+		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and rng:RandomInt(2) == 0 then
+			return RoomType.ROOM_CHALLENGE
+		else
+			-- WOW the logic for arcades & vaults is a fucking headache
+			if game:GetLevel():GetStage() % 2 == 0 then
+				local vaultBaseChance = (rng:RandomInt(10) == 0 or (keyCountTwoOrMore and rng:RandomInt(3) == 0))
+				if vaultBaseChance then
+					if not coinCountFiveOrMore or keyCountTwoOrMore then
+						return RoomType.ROOM_CHEST
+					end
+				elseif coinCountFiveOrMore then
+					return RoomType.ROOM_ARCADE
+				end
+			end
+
+			--Arcade/Vault logic can fall through without generating either
+			if mod.roomchoice == 0 and rng:RandomInt(50) == 0
+			or (((allPlayersRedHeartsOnly and redHeartCount < 4)
+			or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
+			and rng:RandomInt(5) == 0) then
+				if rng:RandomInt(2) == 0 then
+					return RoomType.ROOM_ISAACS
+				else
+					return RoomType.ROOM_BARREN
+				end
+			end
+		end
+	end
+	-- Default to Curse Room
+	return 0
+end
 
 function mod:Init()
 	debugPrint("init")
 	local level = game:GetLevel()
 	local stage = level:GetStage()
-	local player = Isaac.GetPlayer(0)
 	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
-	local curse = level:GetRoomByIdx(CURSE_ID, 0)
+	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
-	mod.roomchoice = 0
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),0)
 
-	-- Special Room
-	debugPrint("room select start")
-	if rng:RandomInt(7) == 0 or (player:HasFullHearts() and rng:RandomInt(4) == 0) then
-		if rng:RandomInt(50) == 0 or (player:GetNumKeys() >= 2 and rng:RandomInt(5) == 0) then
-			debugPrint("dice")
-			mod.roomchoice = RoomType.ROOM_DICE
-		else
-			debugPrint("sacrifice")
-			mod.roomchoice = RoomType.ROOM_SACRIFICE
-		end
-	elseif rng:RandomInt(20) == 0 then
-		debugPrint("library")
-		mod.roomchoice = RoomType.ROOM_LIBRARY
-	elseif rng:RandomInt
-	(3) == 0 and player:HasFullHearts() or (player:GetHearts() + player:GetSoulHearts()) >= player:GetEffectiveMaxHearts() then
-			debugPrint("challenge")
-			mod.roomchoice = RoomType.ROOM_CHALLENGE
-	else
-		-- WOW the logic for arcades & vaults is a fucking headache
-		if game:GetLevel():GetStage() % 2 == 0 then
-			local vaultBaseChance = (rng:RandomInt(10) == 0 or (player:GetNumKeys() >= 2 and rng:RandomInt(3) == 0))
-			if vaultBaseChance then
-				debugPrint("vault chance successful")
-				if player:GetNumCoins() < 5 or player:GetNumKeys() >= 2 then
-					debugPrint("vault")
-					mod.roomchoice = RoomType.ROOM_CHEST
-				end
-			elseif player:GetNumCoins() >= 5 then
-				debugPrint("arcade")
-				mod.roomchoice = RoomType.ROOM_ARCADE
-			end
-		end
-
-		debugPrint(mod.roomchoice)
-		if mod.roomchoice == 0 and (rng:RandomInt(50) == 0 or (((player:GetHearts() < 4 and player:GetSoulHearts() == 0) or (player:GetHearts() == 0 and player:GetSoulHearts() < 4)) and rng:RandomInt(5) == 0)) then
-			if rng:RandomInt(2) == 0 then
-				debugPrint("bedroom")
-				mod.roomchoice = RoomType.ROOM_ISAACS
-			else
-				debugPrint("barren")
-				mod.roomchoice = RoomType.ROOM_BARREN
-			end
-		end
-	end
-	debugPrint("room select end")
-	mod.roomchoice = specialOverride or mod.roomchoice -- override room type from console
-	-- if we've made it this far without a selection, congrats! fall through to curse room
+	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
 
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
 		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
 		hascurseofmaze = true
 	end
 
-	local planetarium = planetariumOverride or (rng:RandomFloat() < level:GetPlanetariumChance())
-	if planetarium then
+	local planetarium = GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance())
+	if planetarium and not gplan then
 		mod:DoPlanetarium(level, stage)
 	end
 
@@ -219,8 +230,8 @@ function mod:Init()
 
 		local gotor = level:GetRoomByIdx(-3,0)
 		if gotor.Data then
-			curse.Data = gotor.Data
-			curse.Flags = 0
+			curseRoom.Data = gotor.Data
+			curseRoom.Flags = 0
 
 			local stairway = false
 			for i = 0, game:GetNumPlayers() - 1 do
@@ -242,17 +253,15 @@ function mod:Init()
 					game:ChangeRoom(START_TOP_ID)
 				end
 				if stairway then
-					Isaac.Spawn(1000,156,1,Vector(440,160),Vector(0,0),nil)
+					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
 				end
 				mod:scheduleForUpdate(function()
 					oldShop.Data = oldData
-					mod:UpdateRoomDisplayFlags(oldShop)
 					oldShop.VisitedCount = 0
-					if planetarium then
-						mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
-						level:GetRoomByIdx(72).VisitedCount = 0
-					end
+
+					mod:UpdateRoomDisplayFlags(oldShop)
 					level:UpdateVisibility()
+
 					mod.firstrun = true
 					mod.runstarted = true
 				end, 0, ModCallbacks.MC_POST_RENDER)
@@ -263,16 +272,15 @@ function mod:Init()
 					level:ChangeRoom(START_BOTTOM_ID) --TODO: Single crash here at womb w/ sacrifice room & planetarium spawn. Can't reproduce
 					game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
 					level:GetRoomByIdx(START_TOP_ID).VisitedCount = 1
-					mod:UpdateRoomDisplayFlags(curse)
-					if planetarium then
-						mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
-						level:GetRoomByIdx(72).VisitedCount = 0
-					end
+
+					mod:UpdateRoomDisplayFlags(curseRoom)
 					level:UpdateVisibility()
-					debugPrint("render")
+
+					--YES this is immediately removed by changing rooms below but if I don't do it here it doesn't look right
 					if stairway then
 						Isaac.Spawn(1000,156,1,Vector(440,160),Vector(0,0),nil)
 					end
+
 					Isaac.GetPlayer().Position = CENTER_POS
 					if game:GetNumPlayers() > 1 then
 						for i = 1, game:GetNumPlayers() - 1 do
@@ -282,49 +290,59 @@ function mod:Init()
 				end, 0, ModCallbacks.MC_POST_RENDER)
 
 				mod:scheduleForUpdate(function()
-					debugPrint("update")
 					-- Refresh room to fix changes made not being saved when exiting room
 					-- Causes various grid/backdrop details to shift a bit after fadein. sad!
 					level:ChangeRoom(START_BOTTOM_ID)
 					level:GetRoomByIdx(START_BOTTOM_ID).VisitedCount = 1
+
 					if stairway then
 						Isaac.Spawn(1000,156,1,Vector(440,160),Vector(0,0),nil)
 					end
+
 					Isaac.GetPlayer().Position = CENTER_POS
 					if game:GetNumPlayers() > 1 then
 						for i = 1, game:GetNumPlayers() - 1 do
 							Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(CENTER_POS, 1)
 						end
 					end
-
-					level:UpdateVisibility()
 				end, 0, ModCallbacks.MC_POST_UPDATE)
 			end
-		end
 
-		if hascurseofmaze then
-			mod:scheduleForUpdate(function()
-				level:AddCurse(LevelCurse.CURSE_OF_MAZE)
-			end, 0, ModCallbacks.MC_POST_UPDATE)
-		end
-
-		if MinimapAPI then
-			local icon = SpecialRoom[mod.roomchoice].minimapIcon
-			if mod.roomchoice == RoomType.ROOM_CHALLENGE and level:GetRoomByIdx(CURSE_ID).Data.Subtype == 1 then
-				icon = "BossAmbushRoom"
+			if MinimapAPI then
+				local icon = SpecialRoom[mod.roomchoice].minimapIcon
+				if mod.roomchoice == RoomType.ROOM_CHALLENGE and level:GetRoomByIdx(CURSE_ID).Data.Subtype == 1 then
+					icon = "BossAmbushRoom"
+				end
+				MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
 			end
-			MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
+
+			if planetarium then
+				mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
+				level:GetRoomByIdx(72).VisitedCount = 0
+			end
+			level:UpdateVisibility()
 		end
+	end
+
+	if hascurseofmaze then
+		mod:scheduleForUpdate(function()
+			level:AddCurse(LevelCurse.CURSE_OF_MAZE)
+		end, 0, ModCallbacks.MC_POST_UPDATE)
 	end
 end
 
-function mod:Level()
+mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
+	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
+		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
+		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 		mod:Init()
 	end
-end
-mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.Level)
-
+end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 	-----mod compatibility-----
