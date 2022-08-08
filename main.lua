@@ -207,7 +207,7 @@ function mod:Init()
 
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
-		level:RemoveCurses(Level Curse.CURSE_OF_MAZE)
+		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
 		hascurseofmaze = true
 	end
 
@@ -219,8 +219,8 @@ function mod:Init()
 		end
 	end
 
-	local planetarium = GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance())
-	if planetarium and not gplan then
+	local planetarium = not gplan and (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance()))
+	if planetarium then
 		planetarium = mod:DoPlanetarium(level, stage)
 	end
 
