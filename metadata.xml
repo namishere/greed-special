@@ -1,9 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <metadata>
-	<name>Special Rooms for Greed Mode</name>
-	<directory>greed-special</directory>
-	<description>Access all sorts of new rooms from the comfort of your Greed Mode starting room or Greed Mode shop!</description>
-	<version>1.0</version>
-	<visibility>Public</visibility>
-	<tag id="Lua"/>
-	<tag id="Rooms"/>
+    <name>More Special Rooms in Greed</name>
+    <directory>more special rooms in greed</directory>
+    <id>2838468961</id>
+    <description>Don't you think that having only Curse Rooms in Greed Mode is dumb? Well, this mod fixes this! Now Curse Rooms have a chance to be replaced by: Dice Rooms, Chest Rooms, Challenge Rooms, Libraries and Arcades, Barren Rooms, Isaac's Room and Planetariums! (Only if you don't have Planetariums in Greed Mode mod)</description>
+    <version>1.3</version>
+    <visibility>Public</visibility>
+    <tag id="Lua"/>
+    <tag id="Rooms"/>
+    <tag id="Tweaks"/>
 </metadata>
