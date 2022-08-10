@@ -56,6 +56,7 @@ mod.debug = false
 mod.roomchoice = 0
 mod.firstrun = false
 mod.runseed = 0 -- to tell if a new run has started
+mod.refesh = false
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -111,11 +112,19 @@ function mod:UpdateRoomDisplayFlags(initroomdesc)
 	end
 end
 
+function mod:MovePlayersToPos(position)
+	Isaac.GetPlayer().Position = position
+	if game:GetNumPlayers() > 1 then
+		for i = 1, game:GetNumPlayers() - 1 do
+			Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(position, 1)
+		end
+	end
+end
+
 function mod:DoPlanetarium(level, levelStage)
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
-		level:ChangeRoom(START_BOTTOM_ID)
 		local stageType = level:GetStageType()
 		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
@@ -123,11 +132,11 @@ function mod:DoPlanetarium(level, levelStage)
 			newRoom.Data = gotor.Data
 			newRoom.DisplayFlags = 5
 			newRoom.Flags = 0
+			sucess = true
 		end
 		level:SetStage(levelStage, stageType)
-		return true
 	end
-	return false
+	return success
 end
 
 function mod:PickSpecialRoom(stage)
@@ -197,12 +206,79 @@ function mod:PickSpecialRoom(stage)
 	return 0
 end
 
+function mod:RefreshRooms(level, stage, curseRoom, planetarium)
+	local shop = level:GetRoomByIdx(70,0)
+
+	if stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
+	-- Normal fadein (game start)
+		local oldData = shop.Data
+		Isaac.ExecuteCommand("goto s.default.0")
+		shop.Data = level:GetRoomByIdx(-3,0).Data
+		level:ChangeRoom(70)
+		game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
+		if not mod.firstrun then --otherwise it doesn't work when starting the first game of the session......
+			game:ChangeRoom(START_TOP_ID)
+		end
+
+		if stairway then
+			Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
+		end
+
+		shop.Data = oldData
+
+		mod.firstrun = true
+
+	else
+		-- mosaic (level transition)
+		-- do this here so that the door graphics are updated..
+		mod:scheduleForUpdate(function()
+			level:ChangeRoom(START_BOTTOM_ID) --TODO: Single crash here at womb w/ sacrifice room & planetarium spawn. Can't reproduce
+			game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
+			level:GetRoomByIdx(START_TOP_ID).VisitedCount = 1
+
+			--YES this is immediately removed by changing rooms below but if I don't do it here it doesn't look right
+			if stairway then
+				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
+			end
+
+			mod:MovePlayersToPos(CENTER_POS)
+		end, 0, ModCallbacks.MC_POST_RENDER)
+
+		-- Refresh room to fix changes made not being saved when exiting room
+		-- Causes various grid/backdrop details to shift a bit after fadein. sad!
+		mod:scheduleForUpdate(function()
+			level:ChangeRoom(START_BOTTOM_ID)
+			level:GetRoomByIdx(START_BOTTOM_ID).VisitedCount = 1
+
+			mod:MovePlayersToPos(CENTER_POS)
+		end, 0, ModCallbacks.MC_POST_UPDATE)
+	end
+
+	mod:scheduleForUpdate(function()
+		shop.VisitedCount = 0
+		shop.DisplayFlags = 001
+
+		curseRoom.VisitedCount = 0
+		curseRoom.DisplayFlags = 001
+
+		if planetarium then
+			local planetariumRoom = level:GetRoomByIdx(72)
+			planetariumRoom.VisitedCount = 0
+			UpdateRoomDisplayFlags(planetariumRoom)
+		end
+
+		level:UpdateVisibility()
+	end, 1, ModCallbacks.MC_POST_RENDER)
+
+end
+
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
 	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
+	mod.refresh = false
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
 	local hascurseofmaze = false
@@ -221,87 +297,24 @@ function mod:Init()
 
 	local planetarium = not gplan and (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance()))
 	if planetarium then
+		mod.refresh = true
 		planetarium = mod:DoPlanetarium(level, stage)
 	end
 
 	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
 
 	if mod.roomchoice > 0 then
-		debugPrint(mod.roomchoice .. " " .. tostring(SpecialRoom[mod.roomchoice].string) .. " " .. tostring(SpecialRoom[mod.roomchoice].maxVariant))
 		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. rng:RandomInt(SpecialRoom[mod.roomchoice].maxVariant))
-
-		local doorData = door:GetSaveState()
-		door.TargetRoomType = mod.roomchoice
-		door:SetVariant(SpecialRoom[mod.roomchoice].variant)
+		mod.refresh = true
 
 		local gotor = level:GetRoomByIdx(-3,0)
 		if gotor.Data then
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 
-			-- Normal fadein (game start)
-			if stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
-				local oldShop = level:GetRoomByIdx(70,0)
-				local oldData = oldShop.Data
-				Isaac.ExecuteCommand("goto s.default.0")
-				oldShop.Data = gotor.Data
-				level:ChangeRoom(70)
-				game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
-				if not mod.firstrun then --otherwise it doesn't work when starting the first game of the session......
-					game:ChangeRoom(START_TOP_ID)
-				end
-
-				if stairway then
-					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
-				end
-
-				mod:scheduleForUpdate(function()
-					oldShop.Data = oldData
-					oldShop.VisitedCount = 0
-
-					mod:UpdateRoomDisplayFlags(oldShop)
-					level:UpdateVisibility()
-
-					mod.firstrun = true
-				end, 0, ModCallbacks.MC_POST_RENDER)
-			-- mosaic (level transition)
-			else
-				-- do this here so that the door graphics are updated..
-				mod:scheduleForUpdate(function()
-					level:ChangeRoom(START_BOTTOM_ID) --TODO: Single crash here at womb w/ sacrifice room & planetarium spawn. Can't reproduce
-					game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
-					level:GetRoomByIdx(START_TOP_ID).VisitedCount = 1
-
-					mod:UpdateRoomDisplayFlags(curseRoom)
-					level:UpdateVisibility()
-
-					--YES this is immediately removed by changing rooms below but if I don't do it here it doesn't look right
-					if stairway then
-						Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
-					end
-
-					Isaac.GetPlayer().Position = CENTER_POS
-					if game:GetNumPlayers() > 1 then
-						for i = 1, game:GetNumPlayers() - 1 do
-							Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(CENTER_POS, 1)
-						end
-					end
-				end, 0, ModCallbacks.MC_POST_RENDER)
-
-				-- Refresh room to fix changes made not being saved when exiting room
-				-- Causes various grid/backdrop details to shift a bit after fadein. sad!
-				mod:scheduleForUpdate(function()
-					level:ChangeRoom(START_BOTTOM_ID)
-					level:GetRoomByIdx(START_BOTTOM_ID).VisitedCount = 1
-
-					Isaac.GetPlayer().Position = CENTER_POS
-					if game:GetNumPlayers() > 1 then
-						for i = 1, game:GetNumPlayers() - 1 do
-							Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(CENTER_POS, 1)
-						end
-					end
-				end, 0, ModCallbacks.MC_POST_UPDATE)
-			end
+			local doorData = door:GetSaveState()
+			door.TargetRoomType = mod.roomchoice
+			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
 
 			if MinimapAPI then
 				local icon = SpecialRoom[mod.roomchoice].minimapIcon
@@ -311,15 +324,12 @@ function mod:Init()
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
 			end
 		end
+	elseif stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
+		mod:MovePlayersToPos(Vector(320.0, 160.0)) -- for consistency
 	end
 
-	if planetarium then
-		if stairway then
-			Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
-		end
-
-		mod:UpdateRoomDisplayFlags(level:GetRoomByIdx(72))
-		level:GetRoomByIdx(72).VisitedCount = 0
+	if mod.refresh then
+		mod:RefreshRooms(level, stage, curseRoom, planetarium)
 	end
 
 	if hascurseofmaze then
@@ -327,8 +337,6 @@ function mod:Init()
 			level:AddCurse(LevelCurse.CURSE_OF_MAZE)
 		end, 0, ModCallbacks.MC_POST_UPDATE)
 	end
-
-	level:UpdateVisibility()
 end
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
