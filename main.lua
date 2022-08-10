@@ -203,7 +203,7 @@ function mod:Init()
 	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
-	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),0)
+	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
