@@ -9,3 +9,6 @@ COMPATIBLE WITH:
 Alt path in Greed Mode!
 Tainted Treasures!
 Greed Mode Improved!
+
+Workshop page:
+https://steamcommunity.com/sharedfiles/filedetails/?id=2838468961
