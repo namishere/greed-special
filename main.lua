@@ -92,22 +92,14 @@ function mod:scheduleForUpdate(foo, delay, callback)
 end
 
 function mod:UpdateRoomDisplayFlags(initroomdesc)
-	local roomdesc = level:GetRoomByIdx(initroomdesc.GridIndex)
+	local level = game:GetLevel()
+	local roomdesc = level:GetRoomByIdx(initroomdesc.GridIndex) --Only roomdescriptors from level:GetRoomByIdx() are mutable
 	local roomdata = roomdesc.Data
-	if roomdata and level:GetRoomByIdx(roomdesc.GridIndex).DisplayFlags
-	and level:GetRoomByIdx(roomdesc.GridIndex) ~= level:GetCurrentRoomDesc().GridIndex then
-		if level:GetStateFlag(LevelStateFlag.STATE_FULL_MAP_EFFECT)
-		or (roomdata.Type ~= RoomType.ROOM_DEFAULT and roomdata.Type ~= RoomType.ROOM_ULTRASECRET
-		and roomdata.Type ~= RoomType.ROOM_SECRET and roomdata.Type ~= RoomType.ROOM_SUPERSECRET
-		and level:GetStateFlag(LevelStateFlag.STATE_COMPASS_EFFECT))
-		or (level:GetStateFlag(LevelStateFlag.STATE_BLUE_MAP_EFFECT)
-		and (roomdata.Type == RoomType.ROOM_SECRET or roomdata.Type == RoomType.ROOM_SUPERSECRET))
-		then
-			roomdesc.DisplayFlags = 111
-		elseif level:GetStateFlag(LevelStateFlag.STATE_MAP_EFFECT) then
-			roomdesc.DisplayFlags = 001
-		else
-			roomdesc.DisplayFlags = 0
+	if level:GetRoomByIdx(roomdesc.GridIndex).DisplayFlags then
+		if level:GetRoomByIdx(roomdesc.GridIndex) ~= level:GetCurrentRoomDesc().GridIndex then
+			if roomdata then 
+				roomdesc.DisplayFlags = RoomDescriptor.DISPLAY_ICON
+			end
 		end
 	end
 end
@@ -207,11 +199,11 @@ end
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
-	local currentroomidx = level:GetCurrentRoomIndex()
+	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
+	local currentroomidx = level:GetCurrentRoomDesc().GridIndex
 	local currentroomvisitcount = level:GetRoomByIdx(currentroomidx).VisitedCount
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
-	mod.refresh = false
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
 	for i = 0, game:GetNumPlayers() - 1 do
@@ -235,7 +227,6 @@ function mod:Init()
 
 	local planetarium = not gplan and (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance()))
 	if planetarium then
-		mod.refresh = true
 		planetarium = mod:DoPlanetarium(level, stage)
 	end
 
@@ -250,8 +241,10 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 			mod:scheduleForUpdate(function()
-				game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.DEATH_CERTIFICATE)
-				level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
+				game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
+				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
+					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
+				end
 				mod:UpdateRoomDisplayFlags(curseRoom)
 				level:UpdateVisibility()
 				for i = 0, game:GetNumPlayers() - 1 do
@@ -270,7 +263,10 @@ function mod:Init()
 				end
 				level:UpdateVisibility()
 			end, 0, ModCallbacks.MC_POST_UPDATE)
-
+			
+			door.TargetRoomType = mod.roomchoice
+			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
+			
 			if MinimapAPI then
 				local icon = SpecialRoom[mod.roomchoice].minimapIcon
 				if mod.roomchoice == RoomType.ROOM_CHALLENGE and curseRoom.Data.Subtype == 1 then
@@ -287,14 +283,14 @@ function mod:Init()
 			local player = Isaac.GetPlayer(i)
 			player.Position = player:GetData().ResetPosition
 		end
-	end, 0, ModCallbacks.MC_POST_UPDATE)
+	end, 0)
 end
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
 	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
 		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
 		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
-	end
+	end	
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
@@ -303,13 +299,29 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	end
 end)
 
+local lastdata = 0
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 	local room = game:GetRoom()
+	local datachanged = false
 	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
 		for i = 1, room:GetGridSize() do
 			local gridEntity = room:GetGridEntity(i)
 			if gridEntity and gridEntity:ToSpikes() then
-				print(gridEntity.VarData)
+				if gridEntity.VarData > lastdata then
+					print("yes")
+					if gridEntity.VarData >= 12 then
+						if rng:RandomInt(2) == 0 then
+							player:AnimateTeleport(true)
+							Game():GetLevel():SetStage(7, 0)
+							Game():StartStageTransition(true, 0)
+						end
+					end
+					lastdata = gridEntity.VarData
+				end
+				
+				if gridEntity.VarData < lastdata then
+					lastdata = gridEntity.VarData
+				end
 			end
 		end
 	end
@@ -321,7 +333,6 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
 		PlanetariumChance:updatePlanetariumChance()
 	end
-
 	mod.runseed = seed:GetStartSeed()
 end)
 
