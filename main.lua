@@ -268,11 +268,7 @@ function mod:Init()
 			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
 			
 			if MinimapAPI then
-				local icon = SpecialRoom[mod.roomchoice].minimapIcon
-				if mod.roomchoice == RoomType.ROOM_CHALLENGE and curseRoom.Data.Subtype == 1 then
-					icon = "BossAmbushRoom"
-				end
-				MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
+				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
 		end
 	end
