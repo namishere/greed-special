@@ -123,7 +123,7 @@ function mod:DoPlanetarium(level, levelStage)
 			newRoom.Flags = 0
 			mod:UpdateRoomDisplayFlags(newRoom)
 			level:UpdateVisibility()
-			sucess = true
+			success = true
 		end
 	end
 	return success
