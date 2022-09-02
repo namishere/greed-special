@@ -125,16 +125,14 @@ function mod:DoPlanetarium(level, levelStage)
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
-		local stageType = level:GetStageType()
-		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
 			local newRoom = level:GetRoomByIdx(72,0)
 			newRoom.Data = gotor.Data
-			newRoom.DisplayFlags = 5
 			newRoom.Flags = 0
+			mod:UpdateRoomDisplayFlags(newRoom)
+			level:UpdateVisibility()
 			sucess = true
 		end
-		level:SetStage(levelStage, stageType)
 	end
 	return success
 end
@@ -148,7 +146,7 @@ function mod:PickSpecialRoom(stage)
 	local redHeartCount = 0
 	local soulHeartCount = 0
 	local keyCountTwoOrMore = (Isaac.GetPlayer(i):GetNumKeys() >= 2)
-	local coinCountFiveOrMore = (Isaac.GetPlayer(i):GetNumCoins() >= 5)
+	local coinCountFifteenOrMore = (Isaac.GetPlayer(i):GetNumCoins() >= 15)
 
 	for i = 0, Game():GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
@@ -181,10 +179,10 @@ function mod:PickSpecialRoom(stage)
 			if game:GetLevel():GetStage() % 2 == 0 then
 				local vaultBaseChance = (rng:RandomInt(10) == 0 or (keyCountTwoOrMore and rng:RandomInt(3) == 0))
 				if vaultBaseChance then
-					if not coinCountFiveOrMore or keyCountTwoOrMore then
+					if not coinCountFifteenOrMore or keyCountTwoOrMore then
 						return RoomType.ROOM_CHEST
 					end
-				elseif coinCountFiveOrMore then
+				elseif coinCountFifteenOrMore then
 					return RoomType.ROOM_ARCADE
 				end
 			end
@@ -206,81 +204,21 @@ function mod:PickSpecialRoom(stage)
 	return 0
 end
 
-function mod:RefreshRooms(level, stage, curseRoom, planetarium)
-	local shop = level:GetRoomByIdx(70,0)
-
-	if stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
-	-- Normal fadein (game start)
-		local oldData = shop.Data
-		Isaac.ExecuteCommand("goto s.default.0")
-		shop.Data = level:GetRoomByIdx(-3,0).Data
-		level:ChangeRoom(70)
-		game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
-		if not mod.firstrun then --otherwise it doesn't work when starting the first game of the session......
-			game:ChangeRoom(START_TOP_ID)
-		end
-
-		if stairway then
-			Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
-		end
-
-		shop.Data = oldData
-
-		mod.firstrun = true
-
-	else
-		-- mosaic (level transition)
-		-- do this here so that the door graphics are updated..
-		mod:scheduleForUpdate(function()
-			level:ChangeRoom(START_BOTTOM_ID) --TODO: Single crash here at womb w/ sacrifice room & planetarium spawn. Can't reproduce
-			game:StartRoomTransition(START_TOP_ID, 1, RoomTransitionAnim.FADE)
-			level:GetRoomByIdx(START_TOP_ID).VisitedCount = 1
-
-			--YES this is immediately removed by changing rooms below but if I don't do it here it doesn't look right
-			if stairway then
-				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, ZERO_POS, nil)
-			end
-
-			mod:MovePlayersToPos(CENTER_POS)
-		end, 0, ModCallbacks.MC_POST_RENDER)
-
-		-- Refresh room to fix changes made not being saved when exiting room
-		-- Causes various grid/backdrop details to shift a bit after fadein. sad!
-		mod:scheduleForUpdate(function()
-			level:ChangeRoom(START_BOTTOM_ID)
-			level:GetRoomByIdx(START_BOTTOM_ID).VisitedCount = 1
-
-			mod:MovePlayersToPos(CENTER_POS)
-		end, 0, ModCallbacks.MC_POST_UPDATE)
-	end
-
-	mod:scheduleForUpdate(function()
-		shop.VisitedCount = 0
-		shop.DisplayFlags = 001
-
-		curseRoom.VisitedCount = 0
-		curseRoom.DisplayFlags = 001
-
-		if planetarium then
-			local planetariumRoom = level:GetRoomByIdx(72)
-			planetariumRoom.VisitedCount = 0
-			UpdateRoomDisplayFlags(planetariumRoom)
-		end
-
-		level:UpdateVisibility()
-	end, 1, ModCallbacks.MC_POST_RENDER)
-
-end
-
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
-	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
+	local currentroomidx = level:GetCurrentRoomIndex()
+	local currentroomvisitcount = level:GetRoomByIdx(currentroomidx).VisitedCount
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
 	mod.refresh = false
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
+	for i = 0, game:GetNumPlayers() - 1 do
+		local player = Isaac.GetPlayer(i)
+		player:GetData().ResetPosition = player.Position
+	end
+	
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
 		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
@@ -311,10 +249,27 @@ function mod:Init()
 		if gotor.Data then
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
-
-			local doorData = door:GetSaveState()
-			door.TargetRoomType = mod.roomchoice
-			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
+			mod:scheduleForUpdate(function()
+				game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.DEATH_CERTIFICATE)
+				level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
+				mod:UpdateRoomDisplayFlags(curseRoom)
+				level:UpdateVisibility()
+				for i = 0, game:GetNumPlayers() - 1 do
+					local player = Isaac.GetPlayer(i)
+					player.Position = player:GetData().ResetPosition
+				end
+			end, 0, ModCallbacks.MC_POST_RENDER)
+			mod:scheduleForUpdate(function()
+				if hascurseofmaze then
+					level:AddCurse(LevelCurse.CURSE_OF_MAZE)
+					mod.applyingcurseofmaze = false
+				end
+				for i = 0, game:GetNumPlayers() - 1 do --You have to do it twice or it doesn't look right, not sure why
+					local player = Isaac.GetPlayer(i)
+					player.Position = player:GetData().ResetPosition
+				end
+				level:UpdateVisibility()
+			end, 0, ModCallbacks.MC_POST_UPDATE)
 
 			if MinimapAPI then
 				local icon = SpecialRoom[mod.roomchoice].minimapIcon
@@ -324,19 +279,15 @@ function mod:Init()
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0).PermanentIcons = {icon}
 			end
 		end
-	elseif stage == LevelStage.STAGE1_GREED and (seed:GetStartSeed() ~= mod.runseed) then
-		mod:MovePlayersToPos(Vector(320.0, 160.0)) -- for consistency
 	end
-
-	if mod.refresh then
-		mod:RefreshRooms(level, stage, curseRoom, planetarium)
-	end
-
-	if hascurseofmaze then
-		mod:scheduleForUpdate(function()
-			level:AddCurse(LevelCurse.CURSE_OF_MAZE)
-		end, 0, ModCallbacks.MC_POST_UPDATE)
-	end
+	
+	game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
+	mod:scheduleForUpdate(function()
+		for i = 0, game:GetNumPlayers() - 1 do
+			local player = Isaac.GetPlayer(i)
+			player.Position = player:GetData().ResetPosition
+		end
+	end, 0, ModCallbacks.MC_POST_UPDATE)
 end
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
@@ -349,6 +300,18 @@ end)
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 		mod:Init()
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	local room = game:GetRoom()
+	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
+		for i = 1, room:GetGridSize() do
+			local gridEntity = room:GetGridEntity(i)
+			if gridEntity and gridEntity:ToSpikes() then
+				print(gridEntity.VarData)
+			end
+		end
 	end
 end)
 
