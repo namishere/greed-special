@@ -137,8 +137,8 @@ function mod:PickSpecialRoom(stage)
 
 	local redHeartCount = 0
 	local soulHeartCount = 0
-	local keyCountTwoOrMore = (Isaac.GetPlayer(i):GetNumKeys() >= 2)
-	local coinCountFifteenOrMore = (Isaac.GetPlayer(i):GetNumCoins() >= 15)
+	local keyCountTwoOrMore = (Isaac.GetPlayer():GetNumKeys() >= 2)
+	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
 	for i = 0, Game():GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
@@ -180,7 +180,7 @@ function mod:PickSpecialRoom(stage)
 			end
 
 			--Arcade/Vault logic can fall through without generating either
-			if mod.roomchoice == 0 and rng:RandomInt(50) == 0
+			if rng:RandomInt(50) == 0
 			or (((allPlayersRedHeartsOnly and redHeartCount < 4)
 			or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
 			and rng:RandomInt(5) == 0) then
@@ -307,9 +307,14 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 					print("yes")
 					if gridEntity.VarData >= 12 then
 						if rng:RandomInt(2) == 0 then
-							player:AnimateTeleport(true)
 							Game():GetLevel():SetStage(7, 0)
-							Game():StartStageTransition(true, 0)
+							Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW)
+							for i = 0, game:GetNumPlayers() - 1 do
+								Isaac.GetPlayer(i):AnimateTeleport(true)
+							end
+							
+							--Game():GetLevel():SetStage(7, 0)
+							--Game():StartStageTransition(true, 0) -- apparently highly prone to crashing
 						end
 					end
 					lastdata = gridEntity.VarData
