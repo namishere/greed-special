@@ -58,6 +58,12 @@ mod.firstrun = false
 mod.runseed = 0 -- to tell if a new run has started
 mod.refesh = false
 
+-- Vars for fake stage transition
+local color = {1,1,1,1}
+local lastdata = 0
+local playerRef = nil
+local paused = false
+
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
 		print(string)
@@ -196,6 +202,27 @@ function mod:PickSpecialRoom(stage)
 	return 0
 end
 
+--player:AddControlsCooldown(int) could work too, but we want to mimic the whole game pausing
+function mod.PauseGame(force)
+	if game:GetRoom():GetBossID() ~= 54 or force then -- Intentionally fail achievement note pauses on Lamb, since it breaks the Victory Lap menu super hard
+		for _, projectile in pairs(Isaac.FindByType(9)) do
+			projectile:Remove()
+
+			local poof = Isaac.Spawn(1000, 15, 0, projectile.Position, Vector.Zero, nil)
+			poof.SpriteScale = Vector.One * 0.75
+		end
+
+		for _, pillar in pairs(Isaac.FindByType(951, 1)) do
+			pillar:Kill()
+			pillar:Remove()
+		end
+
+		paused = true
+
+		Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_PAUSE, UseFlag.USE_NOANIM)
+	end
+end
+
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
@@ -206,6 +233,7 @@ function mod:Init()
 
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
+	--TODO: This errors on PostRender for Jacob & Esau!!!
 	for i = 0, game:GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
 		player:GetData().ResetPosition = player.Position
@@ -290,45 +318,67 @@ mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
-	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
-		mod:Init()
-	end
-end)
-
-local lastdata = 0
-mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
-	local room = game:GetRoom()
-	local datachanged = false
-	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
-		for i = 1, room:GetGridSize() do
-			local gridEntity = room:GetGridEntity(i)
-			if gridEntity and gridEntity:ToSpikes() then
-				if gridEntity.VarData > lastdata then
-					print("yes")
-					if gridEntity.VarData >= 12 then
-						if rng:RandomInt(2) == 0 then
-							Game():GetLevel():SetStage(7, 0)
-							Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW)
-							for i = 0, game:GetNumPlayers() - 1 do
-								Isaac.GetPlayer(i):AnimateTeleport(true)
-							end
-							
-							--Game():GetLevel():SetStage(7, 0)
-							--Game():StartStageTransition(true, 0) -- apparently highly prone to crashing
-						end
-					end
-					lastdata = gridEntity.VarData
-				end
-				
-				if gridEntity.VarData < lastdata then
-					lastdata = gridEntity.VarData
-				end
+	if game:IsGreedMode() then
+		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
+			mod:Init()
+		elseif paused then
+			playerRef.Entity:GetSprite().Color = Color(color[1], color[2], color[3], color[4])
+			playerRef = nil
+			for i = 0, game:GetNumPlayers() - 1 do
+				Isaac.GetPlayer():AnimateAppear()
 			end
+			paused = false
 		end
 	end
 end)
 
+for hook = InputHook.IS_ACTION_PRESSED, InputHook.IS_ACTION_TRIGGERED do
+	mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
+		if paused and action ~= ButtonAction.ACTION_CONSOLE then
+			return false
+		end
+	end, hook)
+end
+
+mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
+	if paused and action ~= ButtonAction.ACTION_CONSOLE then
+		return 0
+	end
+end, InputHook.GET_ACTION_VALUE)
+
+mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
+	if flags == DamageFlag.DAMAGE_SPIKES | DamageFlag.DAMAGE_NO_PENALTIES then
+		local room = game:GetRoom()
+		if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
+			for i = 1, room:GetGridSize() do
+				local gridEntity = room:GetGridEntity(i)
+				if gridEntity and gridEntity:ToSpikes()
+				and gridEntity.VarData >= 12 and rng:RandomInt(2) == 0 then
+					-- delay so the teleport animation overrides the pain animantion
+					mod:scheduleForUpdate(function()
+						local player = entity:ToPlayer()
+						player:AnimateTeleport(true)
+						mod.PauseGame(true)
+						for i = 0, game:GetNumPlayers() - 1 do
+							Isaac.GetPlayer().Velocity = ZERO_POS
+						end
+						mod:scheduleForUpdate(function()
+							local sprite = player:GetSprite()
+							color = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
+							Game():GetLevel():SetStage(7, 0)
+							sprite.Color = Color(255,255,255,0)
+							player:UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
+							playerRef = EntityRef(player)
+						end, 19)
+					end, 0)
+				end
+			end
+		end
+	end
+end, EntityType.ENTITY_PLAYER)
+
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
+	paused = false
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
@@ -338,5 +388,6 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
+	paused = false
 	mod.runseed = 0
 end)
