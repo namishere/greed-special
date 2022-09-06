@@ -320,36 +320,6 @@ function mod:Init()
 	end, 0)
 end
 
-mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
-	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
-		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
-		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
-	end
-end)
-
-mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
-	if game:IsGreedMode() then
-		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
-			mod:Init()
-		elseif mod.paused then
-			for i = 0, game:GetNumPlayers() - 1 do
-				local player = Isaac.GetPlayer(i)
-				local data = player:GetData()
-				local color = {1, 1, 1, 1}
-				if data.greedcolor then
-					color = {data.greedcolor[1], data.greedcolor[2], data.greedcolor[3], data.greedcolor[4]}
-				end
-
-				player:GetSprite().Color = Color(color[1], color[2],color[3], color[4])
-				player:AnimateAppear()
-			end
-			mod.paused = false
-		end
-		
-		mod.lastSacCount = nil
-	end
-end)
-
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 	local room = game:GetRoom()
 	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
@@ -403,10 +373,49 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 		elseif game:GetFrameCount() == mod.teleportEndFrame then
 			game:GetLevel():SetStage(7, 0)
 			Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
-			mod.teleportIndex = 0
-			mod.teleportStartFrame = 0
-			mod.teleportEndFrame = 0
 		end
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
+	if game:IsGreedMode() then
+		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
+			mod:Init()
+		elseif mod.paused then
+			for i = 0, game:GetNumPlayers() - 1 do
+				local player = Isaac.GetPlayer(i)
+				local data = player:GetData()
+				local color = {1, 1, 1, 1}
+				if data.greedcolor then
+					color = {data.greedcolor[1], data.greedcolor[2], data.greedcolor[3], data.greedcolor[4]}
+				end
+
+				player:GetSprite().Color = Color(color[1], color[2],color[3], color[4])
+				player:AnimateAppear()
+			end
+		end
+		
+		mod.ResetVars()
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
+	mod.ResetVars()
+	-----mod compatibility-----
+	if PlanetariumChance and game:IsGreedMode() then
+		PlanetariumChance.storage.canPlanetariumsSpawn = true
+		PlanetariumChance:updatePlanetariumChance()
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
+	mod.ResetVars()
+end)
+
+mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
+	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
+		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
+		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
 	end
 end)
 
@@ -428,17 +437,4 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, fla
 	if mod.paused then
 		return false
 	end
-end)
-
-mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
-	mod.ResetVars()
-	-----mod compatibility-----
-	if PlanetariumChance and game:IsGreedMode() then
-		PlanetariumChance.storage.canPlanetariumsSpawn = true
-		PlanetariumChance:updatePlanetariumChance()
-	end
-end)
-
-mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.ResetVars()
 end)
