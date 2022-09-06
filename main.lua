@@ -27,6 +27,9 @@ local CENTER_POS = Vector(320.0, 280.0)
 local STAIRCASE_POS = Vector(440.0 ,160.0)
 local ZERO_POS = Vector(0.0, 0.0)
 
+local TELEPORT_DELAY = 5
+local TELEPORT_ANIM = 20
+
 local DoorVariant = {
 	BOMB = 0,
 	KEY = 1, -- subtype 1 is maus door and strange door??? may be general use
@@ -59,10 +62,10 @@ mod.runseed = 0 -- to tell if a new run has started
 mod.refesh = false
 
 -- Vars for fake stage transition
-local color = {1,1,1,1}
-local lastdata = 0
-local playerRef = nil
-local paused = false
+mod.teleportIndex = 0
+mod.teleportStartFrame = 0
+mod.teleportEndFrame = 0
+mod.paused = false
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -103,7 +106,7 @@ function mod:UpdateRoomDisplayFlags(initroomdesc)
 	local roomdata = roomdesc.Data
 	if level:GetRoomByIdx(roomdesc.GridIndex).DisplayFlags then
 		if level:GetRoomByIdx(roomdesc.GridIndex) ~= level:GetCurrentRoomDesc().GridIndex then
-			if roomdata then 
+			if roomdata then
 				roomdesc.DisplayFlags = RoomDescriptor.DISPLAY_ICON
 			end
 		end
@@ -217,7 +220,7 @@ function mod.PauseGame(force)
 			pillar:Remove()
 		end
 
-		paused = true
+		mod.paused = true
 
 		Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_PAUSE, UseFlag.USE_NOANIM)
 	end
@@ -238,7 +241,7 @@ function mod:Init()
 		local player = Isaac.GetPlayer(i)
 		player:GetData().ResetPosition = player.Position
 	end
-	
+
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
 		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
@@ -291,16 +294,16 @@ function mod:Init()
 				end
 				level:UpdateVisibility()
 			end, 0, ModCallbacks.MC_POST_UPDATE)
-			
+
 			door.TargetRoomType = mod.roomchoice
 			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
-			
+
 			if MinimapAPI then
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
 		end
 	end
-	
+
 	game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
 	mod:scheduleForUpdate(function()
 		for i = 0, game:GetNumPlayers() - 1 do
@@ -314,37 +317,74 @@ mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
 	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
 		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
 		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
-	end	
+	end
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	if game:IsGreedMode() then
 		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 			mod:Init()
-		elseif paused then
-			playerRef.Entity:GetSprite().Color = Color(color[1], color[2], color[3], color[4])
-			playerRef = nil
+		elseif mod.paused then
 			for i = 0, game:GetNumPlayers() - 1 do
-				Isaac.GetPlayer():AnimateAppear()
+				local player = Isaac.GetPlayer(i)
+				local data = player:GetData()
+				local color = {1, 1, 1, 1}
+				if data.greedcolor then
+					color = {data.greedcolor[1], data.greedcolor[2], data.greedcolor[3], data.greedcolor[4]}
+				end
+
+				player:GetSprite().Color = Color(color[1], color[2],color[3], color[4])
+				player:AnimateAppear()
 			end
-			paused = false
+			mod.paused = false
 		end
 	end
 end)
 
 for hook = InputHook.IS_ACTION_PRESSED, InputHook.IS_ACTION_TRIGGERED do
 	mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-		if paused and action ~= ButtonAction.ACTION_CONSOLE then
+		if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
 			return false
 		end
 	end, hook)
 end
 
 mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-	if paused and action ~= ButtonAction.ACTION_CONSOLE then
+	if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
 		return 0
 	end
 end, InputHook.GET_ACTION_VALUE)
+
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	if mod.teleportIndex > 0 then
+		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_DELAY * mod.teleportIndex then
+			debugPrint("teleporting teleportIndex #"..mod.teleportIndex)
+			local player = Isaac.GetPlayer(mod.teleportIndex - 1)
+			local playerCount = game:GetNumPlayers()
+			player:AnimateTeleport(true)
+			mod:scheduleForUpdate(function()
+				local sprite = player:GetSprite()
+				player:GetData().greedcolor = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
+				sprite.Color = Color(1, 1, 1, 0)
+			end, TELEPORT_ANIM)
+			if mod.teleportIndex < playerCount then
+				mod.teleportIndex = mod.teleportIndex + 1
+			end
+		elseif game:GetFrameCount() == mod.teleportEndFrame then
+			game:GetLevel():SetStage(7, 0)
+			Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
+			mod.teleportIndex = 0
+			mod.teleportStartFrame = 0
+			mod.teleportEndFrame = 0
+		end
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
+	if mod.paused then
+		return false
+	end
+end)
 
 mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
 	if flags == DamageFlag.DAMAGE_SPIKES | DamageFlag.DAMAGE_NO_PENALTIES then
@@ -353,24 +393,15 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, fla
 			for i = 1, room:GetGridSize() do
 				local gridEntity = room:GetGridEntity(i)
 				if gridEntity and gridEntity:ToSpikes()
-				and gridEntity.VarData >= 12 and rng:RandomInt(2) == 0 then
-					-- delay so the teleport animation overrides the pain animantion
-					mod:scheduleForUpdate(function()
-						local player = entity:ToPlayer()
-						player:AnimateTeleport(true)
-						mod.PauseGame(true)
-						for i = 0, game:GetNumPlayers() - 1 do
-							Isaac.GetPlayer().Velocity = ZERO_POS
-						end
-						mod:scheduleForUpdate(function()
-							local sprite = player:GetSprite()
-							color = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
-							Game():GetLevel():SetStage(7, 0)
-							sprite.Color = Color(255,255,255,0)
-							player:UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
-							playerRef = EntityRef(player)
-						end, 19)
-					end, 0)
+				and gridEntity.VarData >= 1 and rng:RandomInt(2) == 0 then
+					for i = 0, game:GetNumPlayers() - 1 do
+						Isaac.GetPlayer().Velocity = ZERO_POS
+					end
+					mod.PauseGame(true)
+					mod.teleportStartFrame = game:GetFrameCount() - TELEPORT_DELAY
+ 					mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_DELAY * game:GetNumPlayers()) + TELEPORT_ANIM
+					mod.teleportIndex = 1
+					debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
 				end
 			end
 		end
@@ -378,7 +409,7 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, fla
 end, EntityType.ENTITY_PLAYER)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
-	paused = false
+	mod.paused = false
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
@@ -388,6 +419,6 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	paused = false
+	mod.paused = false
 	mod.runseed = 0
 end)
