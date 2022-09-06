@@ -57,15 +57,14 @@ local SpecialRoom = {
 
 mod.debug = false
 mod.roomchoice = 0
-mod.firstrun = false
-mod.runseed = 0 -- to tell if a new run has started
-mod.refesh = false
 
 -- Vars for fake stage transition
 mod.teleportIndex = 0
 mod.teleportStartFrame = 0
 mod.teleportEndFrame = 0
 mod.paused = false
+
+mod.lastSacCount = nil
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -206,7 +205,7 @@ function mod:PickSpecialRoom(stage)
 end
 
 --player:AddControlsCooldown(int) could work too, but we want to mimic the whole game pausing
-function mod.PauseGame(force)
+function mod:PauseGame(force)
 	if game:GetRoom():GetBossID() ~= 54 or force then -- Intentionally fail achievement note pauses on Lamb, since it breaks the Victory Lap menu super hard
 		for _, projectile in pairs(Isaac.FindByType(9)) do
 			projectile:Remove()
@@ -265,7 +264,6 @@ function mod:Init()
 
 	if mod.roomchoice > 0 then
 		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. rng:RandomInt(SpecialRoom[mod.roomchoice].maxVariant))
-		mod.refresh = true
 
 		local gotor = level:GetRoomByIdx(-3,0)
 		if gotor.Data then
@@ -338,24 +336,39 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 			end
 			mod.paused = false
 		end
+		
+		mod.lastSacCount = nil
 	end
 end)
 
-for hook = InputHook.IS_ACTION_PRESSED, InputHook.IS_ACTION_TRIGGERED do
-	mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-		if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
-			return false
-		end
-	end, hook)
-end
-
-mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-	if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
-		return 0
-	end
-end, InputHook.GET_ACTION_VALUE)
-
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	local room = game:GetRoom()
+	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
+		for i = 1, room:GetGridSize() do
+			local gridEntity = room:GetGridEntity(i)
+			if gridEntity and gridEntity:ToSpikes() then
+				local sacCount = gridEntity.VarData
+				if not mod.lastSacCount then
+					mod.lastSacCount = sacCount
+				end
+				
+				if mod.lastSacCount ~= sacCount then
+					if gridEntity.VarData >= 12 and rng:RandomInt(2) == 0 then
+						for i = 0, game:GetNumPlayers() - 1 do
+							Isaac.GetPlayer().Velocity = Vector.Zero
+						end
+						mod:PauseGame(true)
+						mod.teleportStartFrame = game:GetFrameCount() - TELEPORT_DELAY
+						mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_DELAY * game:GetNumPlayers()) + TELEPORT_ANIM
+						mod.teleportIndex = 1
+						debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
+					end
+				end
+				mod.lastSacCount = sacCount
+			end
+		end
+	end
+	
 	if mod.teleportIndex > 0 then
 		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_DELAY * mod.teleportIndex then
 			debugPrint("teleporting teleportIndex #"..mod.teleportIndex)
@@ -380,45 +393,37 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 	end
 end)
 
+for hook = InputHook.IS_ACTION_PRESSED, InputHook.IS_ACTION_TRIGGERED do
+	mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
+		if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
+			return false
+		end
+	end, hook)
+end
+
+mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
+	if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
+		return 0
+	end
+end, InputHook.GET_ACTION_VALUE)
+
 mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
 	if mod.paused then
 		return false
 	end
 end)
 
-mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
-	if flags == DamageFlag.DAMAGE_SPIKES | DamageFlag.DAMAGE_NO_PENALTIES then
-		local room = game:GetRoom()
-		if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
-			for i = 1, room:GetGridSize() do
-				local gridEntity = room:GetGridEntity(i)
-				if gridEntity and gridEntity:ToSpikes()
-				and gridEntity.VarData >= 1 and rng:RandomInt(2) == 0 then
-					for i = 0, game:GetNumPlayers() - 1 do
-						Isaac.GetPlayer().Velocity = ZERO_POS
-					end
-					mod.PauseGame(true)
-					mod.teleportStartFrame = game:GetFrameCount() - TELEPORT_DELAY
- 					mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_DELAY * game:GetNumPlayers()) + TELEPORT_ANIM
-					mod.teleportIndex = 1
-					debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
-				end
-			end
-		end
-	end
-end, EntityType.ENTITY_PLAYER)
-
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 	mod.paused = false
+	mod.lastSacCount = nil
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
 		PlanetariumChance:updatePlanetariumChance()
 	end
-	mod.runseed = seed:GetStartSeed()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
 	mod.paused = false
-	mod.runseed = 0
+	mod.lastSacCount = nil
 end)
