@@ -256,6 +256,7 @@ function mod:Init()
 		hascurseofmaze = true
 	end
 
+	--TODO: forgotten when we refactored code, needs to be reimplemented
 	local stairway = false
 	for i = 0, game:GetNumPlayers() - 1 do
 		if Isaac.GetPlayer(i):HasCollectible(CollectibleType.COLLECTIBLE_STAIRWAY) then
