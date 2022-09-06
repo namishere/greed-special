@@ -27,6 +27,7 @@ local CENTER_POS = Vector(320.0, 280.0)
 local STAIRCASE_POS = Vector(440.0 ,160.0)
 local ZERO_POS = Vector(0.0, 0.0)
 
+local SACRIFICE_MIN = 12
 local TELEPORT_DELAY = 5
 local TELEPORT_ANIM = 20
 
@@ -84,6 +85,13 @@ local function runUpdates(tab) --This is from Fiend Folio
             table.remove(tab, i)
         end
     end
+end
+
+function mod.ResetVars()
+	mod.paused = false
+	mod.teleportIndex = 0
+	mod.teleportStartFrame = 0
+	mod.teleportEndFrame = 0
 end
 
 mod.delayedFuncs = {}
@@ -360,12 +368,20 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_DELAY * mod.teleportIndex then
 			debugPrint("teleporting teleportIndex #"..mod.teleportIndex)
 			local player = Isaac.GetPlayer(mod.teleportIndex - 1)
+			local playerRef = EntityRef(player)
 			local playerCount = game:GetNumPlayers()
 			player:AnimateTeleport(true)
 			mod:scheduleForUpdate(function()
-				local sprite = player:GetSprite()
-				player:GetData().greedcolor = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
-				sprite.Color = Color(1, 1, 1, 0)
+				--if you restart while teleporting (via the console in this case, but other mods could invoke it),
+				--player becomes garbage data and the game crashes. now doing two pairs of sanity checks;
+				--check that we're past POST_GAME_STARTED so we've had a chance to wipe mod.paused,
+				--and use an EntityRef instead of the raw player entity so we can check that it still exists
+				if game:GetFrameCount() > 1 and mod.paused and playerRef.Entity then
+					local refPlayer = playerRef.Entity
+					local sprite = refPlayer:GetSprite()
+					refPlayer:GetData().greedcolor = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
+					sprite.Color = Color(1, 1, 1, 0)
+				end
 			end, TELEPORT_ANIM)
 			if mod.teleportIndex < playerCount then
 				mod.teleportIndex = mod.teleportIndex + 1
@@ -393,7 +409,8 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, fla
 			for i = 1, room:GetGridSize() do
 				local gridEntity = room:GetGridEntity(i)
 				if gridEntity and gridEntity:ToSpikes()
-				and gridEntity.VarData >= 1 and rng:RandomInt(2) == 0 then
+				--TODO: VarData is only incremented AFTER this callback..
+				and gridEntity.VarData >= SACRIFICE_MIN -1 and rng:RandomInt(2) == 0 then
 					for i = 0, game:GetNumPlayers() - 1 do
 						Isaac.GetPlayer().Velocity = ZERO_POS
 					end
@@ -409,7 +426,7 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, fla
 end, EntityType.ENTITY_PLAYER)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
-	mod.paused = false
+	mod.ResetVars()
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
@@ -419,6 +436,6 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.paused = false
+	mod.ResetVars()
 	mod.runseed = 0
 end)
