@@ -318,10 +318,6 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 			mod:Init()
 		end
 		
-		if game:GetLevel():GetStage() == LevelStage.STAGE7_GREED then
-			print(game:GetLevel():GetStageType())
-		end
-		
 		mod.lastSacCount = nil
 	end
 end)
