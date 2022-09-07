@@ -168,6 +168,8 @@ function mod:PickSpecialRoom(stage)
 	elseif rng:RandomInt(20) == 0 then
 		return RoomType.ROOM_LIBRARY
 	elseif rng:RandomInt(2) ~= 0 or (devilRoomVisited and rng:RandomInt(4) ~= 0) then
+		--if rng:RandomInt(4) == 0 or (stage == LevelStage.STAGE1_GREED and rng:RandomInt(4) == 0) then
+			--return RoomType.ROOM_MINIBOSS
 		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and rng:RandomInt(2) == 0 then
 			return RoomType.ROOM_CHALLENGE
 		else
