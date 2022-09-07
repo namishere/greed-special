@@ -258,7 +258,7 @@ function mod:Init()
 			end, 0, ModCallbacks.MC_POST_RENDER)
 			mod:scheduleForUpdate(function()
 				if hascurseofmaze then
-					level:AddCurse(LevelCurse.CURSE_OF_MAZE)
+					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
 					mod.applyingcurseofmaze = false
 				end
 				for i = 0, game:GetNumPlayers() - 1 do --You have to do it twice or it doesn't look right, not sure why
