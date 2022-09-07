@@ -213,10 +213,12 @@ function mod:Init()
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
 	--TODO: This errors on PostRender for Jacob & Esau!!!
+	--[[
 	for i = 0, game:GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
 		player:GetData().ResetPosition = player.Position
 	end
+	]]--
 
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
@@ -247,27 +249,39 @@ function mod:Init()
 		if gotor.Data then
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
+
+			Isaac.ExecuteCommand("goto s.default.0")
+			gotor = level:GetRoomByIdx(-3,0)
+			level:GetRoomByIdx(45,0).Data = gotor.Data
+			level:GetRoomByIdx(45,0).AwardSeed = gotor.AwardSeed
+			level:GetRoomByIdx(45,0).DecorationSeed = gotor.DecorationSeed
+			level:GetRoomByIdx(45,0).SpawnSeed = gotor.SpawnSeed
+			game:ChangeRoom(45)
 			mod:scheduleForUpdate(function()
-				game:ChangeRoom(currentroomidx)
+				--game:ChangeRoom(currentroomidx)
 				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
 					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
 				end
 				mod:UpdateRoomDisplayFlags(curseRoom)
 				level:UpdateVisibility()
+				--[[
 				for i = 0, game:GetNumPlayers() - 1 do
 					local player = Isaac.GetPlayer(i)
 					player.Position = player:GetData().ResetPosition
 				end
+				]]--
 			end, 0, ModCallbacks.MC_POST_RENDER)
 			mod:scheduleForUpdate(function()
 				if hascurseofmaze then
 					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
 					mod.applyingcurseofmaze = false
 				end
+				--[[
 				for i = 0, game:GetNumPlayers() - 1 do --You have to do it twice or it doesn't look right, not sure why
 					local player = Isaac.GetPlayer(i)
 					player.Position = player:GetData().ResetPosition
 				end
+				]]--
 				level:UpdateVisibility()
 			end, 0, ModCallbacks.MC_POST_UPDATE)
 
@@ -277,16 +291,24 @@ function mod:Init()
 			if MinimapAPI then
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
+
+			--TODO: this will need shit like mod.runseed reimplemented to tell what kind of fadein is being used
+			if game:GetLevel():GetStage() > LevelStage.STAGE1_GREED then
+				game:ChangeRoom(currentroomidx)
+			else
+				game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
+			end
 		end
 	end
 
-	game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
+	--[[
 	mod:scheduleForUpdate(function()
 		for i = 0, game:GetNumPlayers() - 1 do
 			local player = Isaac.GetPlayer(i)
 			player.Position = player:GetData().ResetPosition
 		end
 	end, 0)
+	]]--
 end
 
 mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageAmount, damageFlags, damageSource, damageCountdownFrames)
@@ -317,7 +339,7 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 			mod:Init()
 		end
-		
+
 		mod.lastSacCount = nil
 	end
 end)
