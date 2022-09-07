@@ -248,7 +248,7 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 			mod:scheduleForUpdate(function()
-				game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
+				game:ChangeRoom(currentroomidx)
 				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
 					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
 				end
