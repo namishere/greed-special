@@ -116,6 +116,7 @@ function mod:MovePlayersToPos(position)
 end
 
 function mod:DoPlanetarium(level, levelStage)
+	local success = false
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
