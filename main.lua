@@ -143,6 +143,8 @@ function mod:PickSpecialRoom(stage)
 	local keyCountTwoOrMore = (Isaac.GetPlayer():GetNumKeys() >= 2)
 	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
+	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
+
 	for i = 0, Game():GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
 		if allPlayersFullHealth and player:GetMaxHearts() > player:GetHearts() + player:GetSoulHearts() then --bone hearts ignored
@@ -165,8 +167,7 @@ function mod:PickSpecialRoom(stage)
 		end
 	elseif rng:RandomInt(20) == 0 then
 		return RoomType.ROOM_LIBRARY
-	-- TODO: add 1/4 chance if devil deal visited?
-	elseif rng:RandomInt(2) == 1 then
+	elseif rng:RandomInt(2) ~= 0 or (devilRoomVisited and rng:RandomInt(4) ~= 0) then
 		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and rng:RandomInt(2) == 0 then
 			return RoomType.ROOM_CHALLENGE
 		else
