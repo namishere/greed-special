@@ -56,15 +56,8 @@ local SpecialRoom = {
 	[RoomType.ROOM_PLANETARIUM] = {maxVariant = 4, variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
 }
 
-mod.debug = false
+mod.debug = true
 mod.roomchoice = 0
-
--- Vars for fake stage transition
-mod.teleportIndex = 0
-mod.teleportStartFrame = 0
-mod.teleportEndFrame = 0
-mod.paused = false
-
 mod.lastSacCount = nil
 
 local function debugPrint(string)
@@ -84,14 +77,6 @@ local function runUpdates(tab) --This is from Fiend Folio
             table.remove(tab, i)
         end
     end
-end
-
-function mod.ResetVars()
-	mod.paused = false
-	mod.lastSacCount = nil
-	mod.teleportIndex = 0
-	mod.teleportStartFrame = 0
-	mod.teleportEndFrame = 0
 end
 
 mod.delayedFuncs = {}
@@ -213,27 +198,6 @@ function mod:PickSpecialRoom(stage)
 	return 0
 end
 
---player:AddControlsCooldown(int) could work too, but we want to mimic the whole game pausing
-function mod:PauseGame(force)
-	if game:GetRoom():GetBossID() ~= 54 or force then -- Intentionally fail achievement note pauses on Lamb, since it breaks the Victory Lap menu super hard
-		for _, projectile in pairs(Isaac.FindByType(9)) do
-			projectile:Remove()
-
-			local poof = Isaac.Spawn(1000, 15, 0, projectile.Position, Vector.Zero, nil)
-			poof.SpriteScale = Vector.One * 0.75
-		end
-
-		for _, pillar in pairs(Isaac.FindByType(951, 1)) do
-			pillar:Kill()
-			pillar:Remove()
-		end
-
-		mod.paused = true
-
-		Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_PAUSE, UseFlag.USE_NOANIM)
-	end
-end
-
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
@@ -321,87 +285,45 @@ function mod:Init()
 	end, 0)
 end
 
-mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
-	local room = game:GetRoom()
+mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageAmount, damageFlags, damageSource, damageCountdownFrames)
+	local level = game:GetLevel()
+	local room = level:GetCurrentRoom()
 	if game:IsGreedMode() and room:GetType() == RoomType.ROOM_SACRIFICE then
-		for i = 1, room:GetGridSize() do
-			local gridEntity = room:GetGridEntity(i)
-			if gridEntity and gridEntity:ToSpikes() then
-				local sacCount = gridEntity.VarData
-				if not mod.lastSacCount then
-					mod.lastSacCount = sacCount
-				end
-				
-				if mod.lastSacCount ~= sacCount then
-					if gridEntity.VarData >= SACRIFICE_MIN and rng:RandomInt(2) == 0 then
+		if damageFlags == (DamageFlag.DAMAGE_SPIKES | DamageFlag.DAMAGE_NO_PENALTIES) then
+			for i = 1, room:GetGridSize() do
+				local gridEntity = room:GetGridEntity(i)
+				if gridEntity and gridEntity:ToSpikes()
+				and gridEntity.VarData >= SACRIFICE_MIN and rng:RandomInt(2) == 0 then
+					mod:scheduleForUpdate(function()
+						level:SetStage(7, 0)
+						tookDamage:ToPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
 						for i = 0, game:GetNumPlayers() - 1 do
-							Isaac.GetPlayer().Velocity = Vector.Zero
+							local player = Isaac.GetPlayer(i)
+							player:AnimateTeleport(true)
 						end
-						mod:PauseGame(true)
-						mod.teleportStartFrame = game:GetFrameCount() - TELEPORT_DELAY
-						mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_DELAY * game:GetNumPlayers()) + TELEPORT_ANIM
-						mod.teleportIndex = 1
-						debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
-					end
+					end, 0)
 				end
-				mod.lastSacCount = sacCount
 			end
 		end
 	end
-	
-	if mod.teleportIndex > 0 then
-		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_DELAY * mod.teleportIndex then
-			debugPrint("teleporting teleportIndex #"..mod.teleportIndex)
-			local player = Isaac.GetPlayer(mod.teleportIndex - 1)
-			local playerRef = EntityRef(player)
-			local playerCount = game:GetNumPlayers()
-			player:AnimateTeleport(true)
-			mod:scheduleForUpdate(function()
-				--if you restart while teleporting (via the console in this case, but other mods could invoke it),
-				--player becomes garbage data and the game crashes. now doing two pairs of sanity checks;
-				--check that we're past POST_GAME_STARTED so we've had a chance to wipe mod.paused,
-				--and use an EntityRef instead of the raw player entity so we can check that it still exists
-				if game:GetFrameCount() > 1 and mod.paused and playerRef.Entity then
-					local refPlayer = playerRef.Entity
-					local sprite = refPlayer:GetSprite()
-					refPlayer:GetData().greedcolor = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
-					sprite.Color = Color(1, 1, 1, 0)
-				end
-			end, TELEPORT_ANIM)
-			if mod.teleportIndex < playerCount then
-				mod.teleportIndex = mod.teleportIndex + 1
-			end
-		elseif game:GetFrameCount() == mod.teleportEndFrame then
-			game:GetLevel():SetStage(7, 0)
-			Isaac.GetPlayer():UseActiveItem(CollectibleType.COLLECTIBLE_FORGET_ME_NOW, UseFlag.USE_NOANIM)
-		end
-	end
-end)
+end, EntityType.ENTITY_PLAYER)
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	if game:IsGreedMode() then
 		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 			mod:Init()
-		elseif mod.paused then
-			for i = 0, game:GetNumPlayers() - 1 do
-				local player = Isaac.GetPlayer(i)
-				local data = player:GetData()
-				local color = {1, 1, 1, 1}
-				if data.greedcolor then
-					color = {data.greedcolor[1], data.greedcolor[2], data.greedcolor[3], data.greedcolor[4]}
-				end
-
-				player:GetSprite().Color = Color(color[1], color[2],color[3], color[4])
-				player:AnimateAppear()
-			end
 		end
 		
-		mod.ResetVars()
+		if game:GetLevel():GetStage() == LevelStage.STAGE7_GREED then
+			print(game:GetLevel():GetStageType())
+		end
+		
+		mod.lastSacCount = nil
 	end
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
-	mod.ResetVars()
+	mod.lastSacCount = nil
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
@@ -410,32 +332,12 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.ResetVars()
+	mod.lastSacCount = nil
 end)
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
 	if MMC and level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_CHALLENGE then
 		MMC.Manager():Crossfade(Music.MUSIC_JINGLE_CHALLENGE_OUTRO)
 		MMC.Manager():Queue(Music.MUSIC_BOSS_OVER)
-	end
-end)
-
-for hook = InputHook.IS_ACTION_PRESSED, InputHook.IS_ACTION_TRIGGERED do
-	mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-		if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
-			return false
-		end
-	end, hook)
-end
-
-mod:AddCallback(ModCallbacks.MC_INPUT_ACTION, function(_, entity, hook, action)
-	if mod.paused and action ~= ButtonAction.ACTION_CONSOLE then
-		return 0
-	end
-end, InputHook.GET_ACTION_VALUE)
-
-mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, entity, amount, flags, source, countdown)
-	if mod.paused then
-		return false
 	end
 end)
