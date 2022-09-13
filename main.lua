@@ -26,6 +26,7 @@ local START_TOP_ID = 84
 local CENTER_POS = Vector(320.0, 280.0)
 local STAIRCASE_POS = Vector(440.0 ,160.0)
 local ZERO_POS = Vector(0.0, 0.0)
+local DOOR_EXIT_POS = Vector(320.0, 160.0)
 
 local SACRIFICE_MIN = 12
 local TELEPORT_DELAY = 5
@@ -255,10 +256,13 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 			mod:scheduleForUpdate(function()
-				if stage == LevelStage.STAGE1_GREED then
+				if game:GetFrameCount() <= 1 then
 					game:StartRoomTransition(START_BOTTOM_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
 				else
 					game:ChangeRoom(START_BOTTOM_ID)
+				end
+				if stairway then
+					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
 				end
 				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
 					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
@@ -274,6 +278,9 @@ function mod:Init()
 			end, 0, ModCallbacks.MC_POST_RENDER)
 			mod:scheduleForUpdate(function()
 				if hascurseofmaze then
+				if stairway then
+					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
+				end
 					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
 					mod.applyingcurseofmaze = false
 				end
@@ -291,6 +298,13 @@ function mod:Init()
 
 			if MinimapAPI then
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
+			end
+		end
+	else --for consistency
+		Isaac.GetPlayer().Position = DOOR_EXIT_POS
+		if game:GetNumPlayers() > 1 then
+			for i = 1, game:GetNumPlayers() - 1 do
+				Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(DOOR_EXIT_POS, 1)
 			end
 		end
 	end
@@ -334,7 +348,7 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 			mod:Init()
 		end
-		
+
 		mod.lastSacCount = nil
 	end
 end)
