@@ -25,11 +25,10 @@ local START_TOP_ID = 84
 
 local CENTER_POS = Vector(320.0, 280.0)
 local STAIRCASE_POS = Vector(440.0 ,160.0)
-local DOOR_EXIT_POS = Vector(320.0, 160.0)
 
 local SACRIFICE_MIN = 12
-local TELEPORT_DELAY = 5
-local TELEPORT_ANIM = 20
+local TELEPORT_LENGTH_DELAY = 5
+local TELEPORT_LENGTH_ANIM = 20
 
 local DoorVariant = {
 	BOMB = 0,
@@ -283,7 +282,6 @@ function mod:Init()
 			door:SetRoomTypes(RoomType.ROOM_DEFAULT, mod.roomchoice)
 			door:Update()
 
-			--game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.BOSS_FORCED)
 			if MinimapAPI then
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
@@ -312,7 +310,6 @@ function mod:Init()
 			end
 			if hascurseofmaze then
 				uLevel:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
-				mod.applyingcurseofmaze = false
 			end
 			uLevel:UpdateVisibility()
 		end, 0, ModCallbacks.MC_POST_UPDATE)
@@ -329,7 +326,7 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 	mod.lastseed = level:GetDungeonPlacementSeed()
 
 	if mod.teleportIndex > 0 then
-		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_DELAY * mod.teleportIndex then
+		if game:GetFrameCount() - mod.teleportStartFrame == TELEPORT_LENGTH_DELAY * mod.teleportIndex then
 			debugPrint("teleporting teleportIndex #"..mod.teleportIndex)
 			local player = Isaac.GetPlayer(mod.teleportIndex - 1)
 			local playerRef = EntityRef(player)
@@ -346,7 +343,7 @@ mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
 					refPlayer:GetData().greedcolor = {sprite.Color.R, sprite.Color.G, sprite.Color.B, sprite.Color.A}
 					sprite.Color = Color(1, 1, 1, 0)
 				end
-			end, TELEPORT_ANIM, ModCallbacks.MC_POST_UPDATE)
+			end, TELEPORT_LENGTH_ANIM, ModCallbacks.MC_POST_UPDATE)
 			if mod.teleportIndex < playerCount then
 				mod.teleportIndex = mod.teleportIndex + 1
 			end
@@ -390,7 +387,7 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageA
 						end
 						mod:PauseGame(true)
 						mod.teleportStartFrame = game:GetFrameCount()
-						mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_DELAY * game:GetNumPlayers()) + TELEPORT_ANIM
+						mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_LENGTH_DELAY * game:GetNumPlayers()) + TELEPORT_LENGTH_ANIM
 						mod.teleportIndex = 1
 						debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
 					end, 0, ModCallbacks.MC_POST_UPDATE)
