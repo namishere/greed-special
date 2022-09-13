@@ -25,7 +25,6 @@ local START_TOP_ID = 84
 
 local CENTER_POS = Vector(320.0, 280.0)
 local STAIRCASE_POS = Vector(440.0 ,160.0)
-local ZERO_POS = Vector(0.0, 0.0)
 local DOOR_EXIT_POS = Vector(320.0, 160.0)
 
 local SACRIFICE_MIN = 12
@@ -60,6 +59,7 @@ local SpecialRoom = {
 mod.debug = true
 mod.roomchoice = 0
 mod.lastSacCount = nil
+mod.lastseed = 0
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -107,7 +107,6 @@ function mod:UpdateRoomDisplayFlags(initroomdesc)
 	end
 end
 
---[[
 function mod:MovePlayersToPos(position)
 	Isaac.GetPlayer().Position = position
 	if game:GetNumPlayers() > 1 then
@@ -116,7 +115,6 @@ function mod:MovePlayersToPos(position)
 		end
 	end
 end
-]]--
 
 function mod:DoPlanetarium(level, levelStage)
 	local success = false
@@ -216,15 +214,7 @@ function mod:Init()
 	local currentroomvisitcount = level:GetRoomByIdx(currentroomidx).VisitedCount
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
 
-	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
-
-	--TODO: This errors on PostRender for Jacob & Esau!!!
-	--[[
-	for i = 0, game:GetNumPlayers() - 1 do
-		local player = Isaac.GetPlayer(i)
-		player:GetData().ResetPosition = player.Position
-	end
-	]]--
+	rng:SetSeed(level:GetDungeonPlacementSeed+1)
 
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
@@ -232,7 +222,6 @@ function mod:Init()
 		hascurseofmaze = true
 	end
 
-	--TODO: forgotten when we refactored code, needs to be reimplemented
 	local stairway = false
 	for i = 0, game:GetNumPlayers() - 1 do
 		if Isaac.GetPlayer(i):HasCollectible(CollectibleType.COLLECTIBLE_STAIRWAY) then
@@ -256,69 +245,51 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 			mod:scheduleForUpdate(function()
-				if game:GetFrameCount() <= 1 then
-					game:StartRoomTransition(START_BOTTOM_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
-				else
-					game:ChangeRoom(START_BOTTOM_ID)
-				end
+				game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
 				if stairway then
-					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
+					Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 				end
+
 				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
 					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
 				end
 				mod:UpdateRoomDisplayFlags(curseRoom)
+				level:Update()
 				level:UpdateVisibility()
-				--[[
-				for i = 0, game:GetNumPlayers() - 1 do
-					local player = Isaac.GetPlayer(i)
-					player.Position = player:GetData().ResetPosition
-				end
-				]]--
 			end, 0, ModCallbacks.MC_POST_RENDER)
 			mod:scheduleForUpdate(function()
 				if hascurseofmaze then
 				if stairway then
-					Isaac.Spawn(1000, 156, 1, Vector(440,160), Vector(0,0), nil)
+					Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 				end
 					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
 					mod.applyingcurseofmaze = false
 				end
-				--[[
-				for i = 0, game:GetNumPlayers() - 1 do --You have to do it twice or it doesn't look right, not sure why
-					local player = Isaac.GetPlayer(i)
-					player.Position = player:GetData().ResetPosition
-				end
-				]]--
 				level:UpdateVisibility()
 			end, 0, ModCallbacks.MC_POST_UPDATE)
 
 			door.TargetRoomType = mod.roomchoice
 			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
+			door:SetRoomTypes(RoomType.ROOM_DEFAULT, mod.roomchoice)
+			door:Update()
 
+			--game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.BOSS_FORCED)
 			if MinimapAPI then
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
 		end
-	else --for consistency
-		Isaac.GetPlayer().Position = DOOR_EXIT_POS
-		if game:GetNumPlayers() > 1 then
-			for i = 1, game:GetNumPlayers() - 1 do
-				Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(DOOR_EXIT_POS, 1)
-			end
-		end
 	end
-
-	--[[
-	game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
-	mod:scheduleForUpdate(function()
-		for i = 0, game:GetNumPlayers() - 1 do
-			local player = Isaac.GetPlayer(i)
-			player.Position = player:GetData().ResetPosition
-		end
-	end, 0)
-	]]--
 end
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
+	if mod.lastseed ~= level:GetDungeonPlacementSeed() then
+		mod:MovePlayersToPos(CENTER_POS)
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	mod.lastseed = level:GetDungeonPlacementSeed()
+end)
 
 mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageAmount, damageFlags, damageSource, damageCountdownFrames)
 	local level = game:GetLevel()
