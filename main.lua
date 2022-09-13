@@ -106,6 +106,7 @@ function mod:UpdateRoomDisplayFlags(initroomdesc)
 	end
 end
 
+--[[
 function mod:MovePlayersToPos(position)
 	Isaac.GetPlayer().Position = position
 	if game:GetNumPlayers() > 1 then
@@ -114,12 +115,15 @@ function mod:MovePlayersToPos(position)
 		end
 	end
 end
+]]--
 
 function mod:DoPlanetarium(level, levelStage)
 	local success = false
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
+		local stageType = level:GetStageType()
+		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
 			local newRoom = level:GetRoomByIdx(72,0)
 			newRoom.Data = gotor.Data
@@ -128,6 +132,7 @@ function mod:DoPlanetarium(level, levelStage)
 			level:UpdateVisibility()
 			success = true
 		end
+		level:SetStage(levelStage, stageType)
 	end
 	return success
 end
@@ -213,10 +218,12 @@ function mod:Init()
 	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetStage()),level:GetStageType()+1)
 
 	--TODO: This errors on PostRender for Jacob & Esau!!!
+	--[[
 	for i = 0, game:GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
 		player:GetData().ResetPosition = player.Position
 	end
+	]]--
 
 	local hascurseofmaze = false
 	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
@@ -248,26 +255,34 @@ function mod:Init()
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
 			mod:scheduleForUpdate(function()
-				game:ChangeRoom(currentroomidx)
+				if stage == LevelStage.STAGE1_GREED then
+					game:StartRoomTransition(START_BOTTOM_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
+				else
+					game:ChangeRoom(START_BOTTOM_ID)
+				end
 				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
 					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
 				end
 				mod:UpdateRoomDisplayFlags(curseRoom)
 				level:UpdateVisibility()
+				--[[
 				for i = 0, game:GetNumPlayers() - 1 do
 					local player = Isaac.GetPlayer(i)
 					player.Position = player:GetData().ResetPosition
 				end
+				]]--
 			end, 0, ModCallbacks.MC_POST_RENDER)
 			mod:scheduleForUpdate(function()
 				if hascurseofmaze then
 					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
 					mod.applyingcurseofmaze = false
 				end
+				--[[
 				for i = 0, game:GetNumPlayers() - 1 do --You have to do it twice or it doesn't look right, not sure why
 					local player = Isaac.GetPlayer(i)
 					player.Position = player:GetData().ResetPosition
 				end
+				]]--
 				level:UpdateVisibility()
 			end, 0, ModCallbacks.MC_POST_UPDATE)
 
@@ -280,6 +295,7 @@ function mod:Init()
 		end
 	end
 
+	--[[
 	game:StartRoomTransition(currentroomidx, 0, RoomTransitionAnim.FADE)
 	mod:scheduleForUpdate(function()
 		for i = 0, game:GetNumPlayers() - 1 do
@@ -287,6 +303,7 @@ function mod:Init()
 			player.Position = player:GetData().ResetPosition
 		end
 	end, 0)
+	]]--
 end
 
 mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageAmount, damageFlags, damageSource, damageCountdownFrames)
