@@ -277,29 +277,6 @@ function mod:Init()
 		if gotor.Data then
 			curseRoom.Data = gotor.Data
 			curseRoom.Flags = 0
-			mod:scheduleForUpdate(function()
-				game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
-				if stairway then
-					Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
-				end
-
-				if level:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
-					level:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
-				end
-				mod:UpdateRoomDisplayFlags(curseRoom)
-				level:Update()
-				level:UpdateVisibility()
-			end, 0, ModCallbacks.MC_POST_RENDER)
-			mod:scheduleForUpdate(function()
-				if hascurseofmaze then
-				if stairway then
-					Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
-				end
-					level:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
-					mod.applyingcurseofmaze = false
-				end
-				level:UpdateVisibility()
-			end, 0, ModCallbacks.MC_POST_UPDATE)
 
 			door.TargetRoomType = mod.roomchoice
 			door:SetVariant(SpecialRoom[mod.roomchoice].variant)
@@ -311,6 +288,34 @@ function mod:Init()
 				MinimapAPI:GetRoomByIdx(CURSE_ID, 0):UpdateType()
 			end
 		end
+	end
+
+	if mod.roomchoice > 0 or planetarium then
+		mod:scheduleForUpdate(function()
+			local uLevel = game:GetLevel()
+			game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
+			if stairway then
+				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
+			end
+
+			if uLevel:GetRoomByIdx(currentroomidx).VisitedCount ~= currentroomvisitcount then
+				uLevel:GetRoomByIdx(currentroomidx).VisitedCount = currentroomvisitcount-1
+			end
+			mod:UpdateRoomDisplayFlags(curseRoom)
+			uLevel:Update()
+			uLevel:UpdateVisibility()
+		end, 0, ModCallbacks.MC_POST_RENDER)
+		mod:scheduleForUpdate(function()
+			local uLevel = game:GetLevel()
+			if stairway then
+				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
+			end
+			if hascurseofmaze then
+				uLevel:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
+				mod.applyingcurseofmaze = false
+			end
+			uLevel:UpdateVisibility()
+		end, 0, ModCallbacks.MC_POST_UPDATE)
 	end
 end
 
