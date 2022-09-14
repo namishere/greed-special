@@ -5,16 +5,14 @@ local level = game:GetLevel()
 local rng = RNG()
 local seed = game:GetSeeds()
 
---TODO: Shop is displayed as visited when starting a new game; can't figure out how to fix
---		Probably rework planetarium code
---		- Did a little bit
+--TODO: Probably rework planetarium code
+--		- In progress
 --		Test test test test
---		Ideally figure out a way to either avoid the backdrop changing when entering a new level
---		- (or figure out a new solution that doesn't require us to warp between rooms)
 --		Implement proper challenge waves
 --		- Waves imported from base game, shop is using cathedral waves
 --		Clean clean CLEAN THIS SHIT
 --		- Shit reasonably cleaned
+--		- Getting big enough that it might benefit splitting into a few files for clarity
 --		Should we try and add support for mods to add new room variants?
 --		Need to ensure compatibility with alt path mod, waiting on team compliance version
 --		- Compatible with Gamonymous version
@@ -53,6 +51,12 @@ local SpecialRoom = {
 	[RoomType.ROOM_CHEST] = {maxVariant = 48, variant = DoorVariant.KEY2, string = "chest", minimapIcon = "ChestRoom"},
 	[RoomType.ROOM_DICE] = {maxVariant = 18, variant = DoorVariant.KEY2, string = "dice", minimapIcon = "DiceRoom"},
 	[RoomType.ROOM_PLANETARIUM] = {maxVariant = 4, variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
+}
+
+--TODO: Saving not implemented yet
+mod.save = {
+	run = {visitedPlanetarium = false},
+	config = {}
 }
 
 mod.debug = true
@@ -134,6 +138,10 @@ end
 --		This needs to account for Forget Me Now and also save that data
 
 function mod:GetCustomPlanetariumChance(level, stage, stageType)
+	if mod.save.run.visitedPlanetarium then
+		return level:GetPlanetariumChance()
+	end
+
 	local planetariumBonus = 0
 	local stageOffset = -1
 	--If not Alt Path then reduce by 1. For mods where Greed Downpour is a second floor.
@@ -169,8 +177,9 @@ end
 function mod:DoPlanetarium(level, levelStage, stageType)
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
-	debugPrint("Planetarium gotor has no Data :(")
 	if gotor.Data then
+		local oldChallenge = game.Challenge
+		game.Challenge = Challenge.CHALLENGE_RED_REDEMPTION
 		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
 			local newRoom = level:GetRoomByIdx(72,0)
@@ -181,7 +190,10 @@ function mod:DoPlanetarium(level, levelStage, stageType)
 		else
 			debugPrint("Failed to make a Red Room Door for Planetarium :(")
 		end
+		game.Challenge = oldChallenge
 		level:SetStage(levelStage, stageType)
+	else
+		debugPrint("Planetarium gotor has no Data :(")
 	end
 end
 
@@ -365,6 +377,9 @@ end
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
 	if mod.lastseed ~= level:GetDungeonPlacementSeed() then
 		mod:MovePlayersToPos(CENTER_POS)
+	elseif level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
+	and level:GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
+		mod.save.run.visitedPlanetarium = true
 	end
 end)
 
@@ -465,7 +480,10 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 	end
 end)
 
-mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
+mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
+	if not continue then
+		mod.save.run.visitedPlanetarium = false
+	end
 	mod.ResetTempVars()
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
@@ -475,6 +493,7 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
+	mod.save.run.visitedPlanetarium = false
 	mod.ResetTempVars()
 end)
 
