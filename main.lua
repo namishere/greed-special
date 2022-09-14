@@ -157,19 +157,19 @@ function mod:GetCustomPlanetariumChance(level, stage, stageType)
 		end
 	end
 
-	debugPrint("Stage used for calc: "..stage+1)
+	debugPrint("Stage used for calc: "..stage)
 	debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
 	debugPrint("Natural Planetarium Chance: "..string.format("%.2f", level:GetPlanetariumChance()))
-	debugPrint("Bonus Planetarium Chance: "..planetariumBonus)
+	debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
 	debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, level:GetPlanetariumChance() + planetariumBonus)))
 
 	return math.min(1, level:GetPlanetariumChance() + planetariumBonus)
 end
 
 function mod:DoPlanetarium(level, levelStage, stageType)
-	local success = false
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
+	debugPrint("Planetarium gotor has no Data :(")
 	if gotor.Data then
 		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
@@ -178,11 +178,11 @@ function mod:DoPlanetarium(level, levelStage, stageType)
 			newRoom.Flags = 0
 			mod:UpdateRoomDisplayFlags(newRoom)
 			level:UpdateVisibility()
-			success = true
+		else
+			debugPrint("Failed to make a Red Room Door for Planetarium :(")
 		end
 		level:SetStage(levelStage, stageType)
 	end
-	return success
 end
 
 function mod:PickSpecialRoom(stage)
@@ -309,7 +309,7 @@ function mod:Init()
 		end
 		planetarium = (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < plaenetariumChance))
 		if planetarium then
-			planetarium = mod:DoPlanetarium(level, stage, stageType)
+			mod:DoPlanetarium(level, stage, stageType)
 		end
 	end
 
