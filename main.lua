@@ -1,9 +1,9 @@
 GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
-local level = game:GetLevel()
 local rng = RNG()
-local seed = game:GetSeeds()
+local json = require("json")
+
 
 --TODO: Probably rework planetarium code
 --		- In progress
@@ -16,6 +16,7 @@ local seed = game:GetSeeds()
 --		Should we try and add support for mods to add new room variants?
 --		Need to ensure compatibility with alt path mod, waiting on team compliance version
 --		- Compatible with Gamonymous version
+--		- Need to recheck this, mod has changed since
 
 local CURSE_ID = 83
 local START_BOTTOM_ID = 97
@@ -53,10 +54,9 @@ local SpecialRoom = {
 	[RoomType.ROOM_PLANETARIUM] = {maxVariant = 4, variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
 }
 
---TODO: Saving not implemented yet
-mod.save = {
+mod.data = {
 	run = {visitedPlanetarium = false},
-	config = {}
+	--config = {}
 }
 
 mod.debug = true
@@ -86,6 +86,35 @@ local function runUpdates(tab) --This is from Fiend Folio
             table.remove(tab, i)
         end
     end
+end
+
+local function ValidateBool(var, default)
+	if var ~= nil then return var end
+	return default
+end
+
+function mod:LoadModData(continuedRun)
+	debugPrint("loading mod data.. continue is "..tostring(continuedRun))
+	local save = {}
+	if mod:HasData() then
+		debugPrint("data exists")
+		save = json.decode(mod:LoadData())
+	else
+		debugPrint("creating data")
+		save = {
+			run = {visitedPlanetarium = false},
+			--config = {}
+		}
+	end
+	if not continuedRun then
+		debugPrint("wiping run data")
+		mod.data.run.visitedPlanetarium = false
+	else
+		local result = ValidateBool(save.run.visitedPlanetarium, false)
+		debugPrint("ValidateBool returned "..tostring(result))
+		mod.data.run.visitedPlanetarium = result
+	end
+	debugPrint("visitedPlanetarium: "..tostring(mod.data.run.visitedPlanetarium))
 end
 
 function mod.ResetTempVars()
@@ -138,10 +167,6 @@ end
 --		This needs to account for Forget Me Now and also save that data
 
 function mod:GetCustomPlanetariumChance(level, stage, stageType)
-	if mod.save.run.visitedPlanetarium then
-		return level:GetPlanetariumChance()
-	end
-
 	local planetariumBonus = 0
 	local stageOffset = -1
 	--If not Alt Path then reduce by 1. For mods where Greed Downpour is a second floor.
@@ -150,7 +175,8 @@ function mod:GetCustomPlanetariumChance(level, stage, stageType)
 	end
 	stage = stage + stageOffset
 
-	if game:GetTreasureRoomVisitCount() < stage*2 then
+	if game:GetTreasureRoomVisitCount() < stage*2
+	and not(mod.data.run.visitedPlanetarium or level:GetPlanetariumChance() >= 1 ) then
 		--To apply multiple bonus if many Treasure Rooms are skipped and unaccounted for.
 		planetariumBonus = 0.2 * math.ceil((stage*2-game:GetTreasureRoomVisitCount())/2)
 		--Skipping one treasure on Basement and one in Caves should add up to 40% but actually adds up to 20% with this formula, this extra bit helps with that.
@@ -167,6 +193,7 @@ function mod:GetCustomPlanetariumChance(level, stage, stageType)
 
 	debugPrint("Stage used for calc: "..stage)
 	debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
+	debugPrint("Planetarium Visited: "..tostring(mod.data.run.visitedPlanetarium))
 	debugPrint("Natural Planetarium Chance: "..string.format("%.2f", level:GetPlanetariumChance()))
 	debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
 	debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, level:GetPlanetariumChance() + planetariumBonus)))
@@ -375,15 +402,18 @@ function mod:Init()
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
+	local level = game:GetLevel()
 	if mod.lastseed ~= level:GetDungeonPlacementSeed() then
 		mod:MovePlayersToPos(CENTER_POS)
 	elseif level:GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
 	and level:GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
-		mod.save.run.visitedPlanetarium = true
+		debugPrint("we entered a planetarium")
+		mod.data.run.visitedPlanetarium = true
 	end
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	local level = game:GetLevel()
 	mod.lastseed = level:GetDungeonPlacementSeed()
 
 	if mod.teleportIndex > 0 then
@@ -477,13 +507,12 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 		end
 
 		mod.ResetTempVars()
+		mod:SaveData(json.encode(mod.data))
 	end
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
-	if not continue then
-		mod.save.run.visitedPlanetarium = false
-	end
+	mod:LoadModData(continue)
 	mod.ResetTempVars()
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
@@ -492,9 +521,17 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
 	end
 end)
 
+mod:AddCallback(ModCallbacks.MC_PRE_GAME_EXIT, function(_, shouldSave)
+	if not shouldSave then
+		mod.data.run.visitedPlanetarium = false
+	end
+	mod:SaveData(json.encode(mod.data))
+end)
+
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.save.run.visitedPlanetarium = false
 	mod.ResetTempVars()
+	mod.data.run.visitedPlanetarium = false
+	mod:SaveData(json.encode(mod.data))
 end)
 
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()
