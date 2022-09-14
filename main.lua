@@ -17,6 +17,7 @@ local json = require("json")
 --		Need to ensure compatibility with alt path mod, waiting on team compliance version
 --		- Compatible with Gamonymous version
 --		- Need to recheck this, mod has changed since
+--		Add language support for the modififed EID description
 
 local CURSE_ID = 83
 local START_BOTTOM_ID = 97
@@ -471,17 +472,21 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageA
 			for i = 1, room:GetGridSize() do
 				local gridEntity = room:GetGridEntity(i)
 				if gridEntity and gridEntity:ToSpikes()
-				and gridEntity.VarData >= SACRIFICE_MIN -1 and rng:RandomInt(2) == 0 then
-					mod:scheduleForUpdate(function()
-						for i = 0, game:GetNumPlayers() - 1 do
-							Isaac.GetPlayer().Velocity = Vector.Zero
-						end
-						mod:PauseGame(true)
-						mod.teleportStartFrame = game:GetFrameCount()
-						mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_LENGTH_DELAY * game:GetNumPlayers()) + TELEPORT_LENGTH_ANIM
-						mod.teleportIndex = 1
-						debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
-					end, 0, ModCallbacks.MC_POST_UPDATE)
+				and gridEntity.VarData >= SACRIFICE_MIN -1 then
+				debugPrint("rolling for teleport")
+					if rng:RandomInt(2) == 0 then
+
+						mod:scheduleForUpdate(function()
+							for i = 0, game:GetNumPlayers() - 1 do
+								Isaac.GetPlayer().Velocity = Vector.Zero
+							end
+							mod:PauseGame(true)
+							mod.teleportStartFrame = game:GetFrameCount()
+							mod.teleportEndFrame = mod.teleportStartFrame + (TELEPORT_LENGTH_DELAY * game:GetNumPlayers()) + TELEPORT_LENGTH_ANIM
+							mod.teleportIndex = 1
+							debugPrint("player count is "..game:GetNumPlayers()..". let's get started...")
+						end, 0, ModCallbacks.MC_POST_UPDATE)
+					end
 				end
 			end
 		end
@@ -510,6 +515,24 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
 		mod:SaveData(json.encode(mod.data))
 	end
 end)
+
+if EID then
+	local function HandleSacrificeRoomEID(descObj)
+		if game:IsGreedMode() then
+			if descObj.ObjType == -999 and descObj.ObjVariant == -1 then
+				local curCounter = descObj.ObjSubType or 1
+				if curCounter <= 2 then
+					local splitPoint = string.find(descObj.Description, '#', 1)
+					descObj.Description = descObj.Description:sub(1,splitPoint-1)
+				elseif curCounter >= 12 then
+					descObj.Description = 	"50% chance to teleport to the \"Ultra Greed\" floor"
+				end
+			end
+		end
+		return descObj
+	end
+	EID:addDescriptionModifier("GreedSpecialRooms Sacrifice", HandleSacrificeRoomEID, nil)
+end
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
 	mod:LoadModData(continue)
