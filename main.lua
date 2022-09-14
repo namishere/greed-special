@@ -127,12 +127,50 @@ function mod:MovePlayersToPos(position)
 	end
 end
 
-function mod:DoPlanetarium(level, levelStage)
+--TODO: I'd like to redo this myself, I want to lower the added chance
+--		but I'm having trouble parsing this code. Ideally I'd like to
+--		save game:GetTreasureRoomVisitCount() on MC_POST_NEW_LEVEL
+--		and compare the saved count with the new count when moving floors
+--		This needs to account for Forget Me Now and also save that data
+
+function mod:GetCustomPlanetariumChance(level, stage, stageType)
+	local planetariumBonus = 0
+	local stageOffset = -1
+	--If not Alt Path then reduce by 1. For mods where Greed Downpour is a second floor.
+	if stageType >= StageType.STAGETYPE_REPENTANCE then
+		stageOffset = 0
+	end
+	stage = stage + stageOffset
+
+	if game:GetTreasureRoomVisitCount() < stage*2 then
+		--To apply multiple bonus if many Treasure Rooms are skipped and unaccounted for.
+		planetariumBonus = 0.2 * math.ceil((stage*2-game:GetTreasureRoomVisitCount())/2)
+		--Skipping one treasure on Basement and one in Caves should add up to 40% but actually adds up to 20% with this formula, this extra bit helps with that.
+		if stage >= 2 and game:GetTreasureRoomVisitCount()/(stage*2) <= 0.5 and level:GetPlanetariumChance() < 0.2 then
+			planetariumBonus = planetariumBonus + 0.2
+			--If someone wanted to skip one treasure room for 4 floors (until Sheol) it'd be inaccurate again but seems excessive
+
+			--if stage = 4 then
+			--	planetariumBonus = planetariumBonus + 0.2
+			--end
+
+		end
+	end
+
+	debugPrint("Stage used for calc: "..stage+1)
+	debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
+	debugPrint("Natural Planetarium Chance: "..string.format("%.2f", level:GetPlanetariumChance()))
+	debugPrint("Bonus Planetarium Chance: "..planetariumBonus)
+	debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, level:GetPlanetariumChance() + planetariumBonus)))
+
+	return math.min(1, level:GetPlanetariumChance() + planetariumBonus)
+end
+
+function mod:DoPlanetarium(level, levelStage, stageType)
 	local success = false
 	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
-		local stageType = level:GetStageType()
 		level:SetStage(7, 0)
 		if level:MakeRedRoomDoor(71, DoorSlot.RIGHT0) then
 			local newRoom = level:GetRoomByIdx(72,0)
@@ -241,6 +279,7 @@ end
 function mod:Init()
 	local level = game:GetLevel()
 	local stage = level:GetStage()
+	local stageType = level:GetStageType()
 	local door = game:GetRoom():GetDoor(DoorSlot.LEFT0)
 	local currentroomidx = level:GetCurrentRoomDesc().GridIndex
 	local currentroomvisitcount = level:GetRoomByIdx(currentroomidx).VisitedCount
@@ -262,9 +301,16 @@ function mod:Init()
 		end
 	end
 
-	local planetarium = not gplan and (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < level:GetPlanetariumChance()))
-	if planetarium then
-		planetarium = mod:DoPlanetarium(level, stage)
+	local planetarium = false
+	if not gplan then
+		local plaenetariumChance = mod:GetCustomPlanetariumChance(level, stage, stageType)
+		if PlanetariumChance then
+			PlanetariumChance.storage.currentFloorSpawnChance = plaenetariumChance * 100
+		end
+		planetarium = (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < plaenetariumChance))
+		if planetarium then
+			planetarium = mod:DoPlanetarium(level, stage, stageType)
+		end
 	end
 
 	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
@@ -424,7 +470,7 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 	-----mod compatibility-----
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
-		PlanetariumChance:updatePlanetariumChance()
+		--PlanetariumChance:updatePlanetariumChance()
 	end
 end)
 
