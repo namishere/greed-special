@@ -20,7 +20,6 @@ local json = require("json")
 --		Add language support for the modififed EID description
 
 local CURSE_ID = 83
-local START_BOTTOM_ID = 97
 local START_TOP_ID = 84
 
 local CENTER_POS = Vector(320.0, 280.0)
@@ -60,7 +59,7 @@ mod.data = {
 	--config = {}
 }
 
-mod.debug = true
+mod.debug = false
 mod.roomchoice = 0
 mod.lastseed = 0
 
@@ -160,12 +159,6 @@ function mod:MovePlayersToPos(position)
 		end
 	end
 end
-
---TODO: I'd like to redo this myself, I want to lower the added chance
---		but I'm having trouble parsing this code. Ideally I'd like to
---		save game:GetTreasureRoomVisitCount() on MC_POST_NEW_LEVEL
---		and compare the saved count with the new count when moving floors
---		This needs to account for Forget Me Now and also save that data
 
 function mod:GetCustomPlanetariumChance(level, stage, stageType)
 	local planetariumBonus = 0
@@ -518,15 +511,14 @@ end)
 
 if EID then
 	local function HandleSacrificeRoomEID(descObj)
-		if game:IsGreedMode() then
-			if descObj.ObjType == -999 and descObj.ObjVariant == -1 then
-				local curCounter = descObj.ObjSubType or 1
-				if curCounter <= 2 then
-					local splitPoint = string.find(descObj.Description, '#', 1)
-					descObj.Description = descObj.Description:sub(1,splitPoint-1)
-				elseif curCounter >= 12 then
-					descObj.Description = 	"50% chance to teleport to the \"Ultra Greed\" floor"
-				end
+		if game:IsGreedMode()
+		and descObj.ObjType == -999 and descObj.ObjVariant == -1 then
+			local curCounter = descObj.ObjSubType or 1
+			if curCounter <= 2 then
+				local splitPoint = string.find(descObj.Description, '#', 1)
+				descObj.Description = descObj.Description:sub(1,splitPoint-1)
+			elseif curCounter >= 12 then
+				descObj.Description = 	"50% chance to teleport to the \"Ultra Greed\" floor"
 			end
 		end
 		return descObj
