@@ -4,6 +4,8 @@ local game = Game()
 local rng = RNG()
 local json = require("json")
 
+include("roomshit")
+
 
 --TODO: Probably rework planetarium code
 --		- In progress
@@ -41,17 +43,16 @@ local DoorVariant = {
 	OPENED = 8
 }
 
---maxVariant starts at index 0
 local SpecialRoom = {
-	[RoomType.ROOM_ARCADE] = {maxVariant = 32, variant = DoorVariant.KEY, string = "arcade", minimapIcon = "Arcade"},
-	[RoomType.ROOM_CHALLENGE] = {maxVariant = 24, variant = DoorVariant.OPENED, string = "challenge", minimapIcon = "AmbushRoom"},
-	[RoomType.ROOM_LIBRARY] = {maxVariant = 14, variant = DoorVariant.KEY, string = "library", minimapIcon = "Library"},
-	[RoomType.ROOM_SACRIFICE] = {maxVariant = 11, variant = DoorVariant.OPENED, string = "sacrifice", minimapIcon = "SacrificeRoom"},
-	[RoomType.ROOM_ISAACS] = {maxVariant = 24, variant = DoorVariant.BOMB2, string = "isaacs", minimapIcon = "IsaacsRoom"},
-	[RoomType.ROOM_BARREN] = {maxVariant = 24, variant = DoorVariant.BOMB2, string = "barren", minimapIcon = "BarrenRoom"},
-	[RoomType.ROOM_CHEST] = {maxVariant = 48, variant = DoorVariant.KEY2, string = "chest", minimapIcon = "ChestRoom"},
-	[RoomType.ROOM_DICE] = {maxVariant = 18, variant = DoorVariant.KEY2, string = "dice", minimapIcon = "DiceRoom"},
-	[RoomType.ROOM_PLANETARIUM] = {maxVariant = 4, variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
+	[RoomType.ROOM_ARCADE] = {variant = DoorVariant.KEY, string = "arcade", minimapIcon = "Arcade"},
+	[RoomType.ROOM_CHALLENGE] = {variant = DoorVariant.OPENED, string = "challenge", minimapIcon = "AmbushRoom"},
+	[RoomType.ROOM_LIBRARY] = {variant = DoorVariant.KEY, string = "library", minimapIcon = "Library"},
+	[RoomType.ROOM_SACRIFICE] = {variant = DoorVariant.OPENED, string = "sacrifice", minimapIcon = "SacrificeRoom"},
+	[RoomType.ROOM_ISAACS] = {variant = DoorVariant.BOMB2, string = "isaacs", minimapIcon = "IsaacsRoom"},
+	[RoomType.ROOM_BARREN] = {variant = DoorVariant.BOMB2, string = "barren", minimapIcon = "BarrenRoom"},
+	[RoomType.ROOM_CHEST] = {variant = DoorVariant.KEY2, string = "chest", minimapIcon = "ChestRoom"},
+	[RoomType.ROOM_DICE] = {variant = DoorVariant.KEY2, string = "dice", minimapIcon = "DiceRoom"},
+	[RoomType.ROOM_PLANETARIUM] = {variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
 }
 
 mod.data = {
@@ -195,8 +196,8 @@ function mod:GetCustomPlanetariumChance(level, stage, stageType)
 	return math.min(1, level:GetPlanetariumChance() + planetariumBonus)
 end
 
-function mod:DoPlanetarium(level, levelStage, stageType)
-	Isaac.ExecuteCommand("goto s.planetarium." .. rng:RandomInt(SpecialRoom[RoomType.ROOM_PLANETARIUM].maxVariant))
+function mod:DoPlanetarium(level, levelStage, stageType, rng)
+	Isaac.ExecuteCommand("goto s.planetarium." .. mod.GetRoomID(RoomType.ROOM_PLANETARIUM, rng))
 	local gotor = level:GetRoomByIdx(-3,0)
 	if gotor.Data then
 		local oldChallenge = game.Challenge
@@ -342,14 +343,14 @@ function mod:Init()
 		end
 		planetarium = (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < plaenetariumChance))
 		if planetarium then
-			mod:DoPlanetarium(level, stage, stageType)
+			mod:DoPlanetarium(level, stage, stageType, rng)
 		end
 	end
 
 	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
 
 	if mod.roomchoice > 0 then
-		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. rng:RandomInt(SpecialRoom[mod.roomchoice].maxVariant))
+		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. mod.GetRoomID(mod.roomchoice, rng))
 
 		local gotor = level:GetRoomByIdx(-3,0)
 		if gotor.Data then
@@ -487,6 +488,7 @@ mod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, function(_, tookDamage, damageA
 end, EntityType.ENTITY_PLAYER)
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function()
+	mod.InitRooms()
 	if game:IsGreedMode() then
 		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 			mod:Init()
