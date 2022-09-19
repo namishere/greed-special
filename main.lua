@@ -8,7 +8,7 @@ include("roomshit")
 
 
 --TODO: Probably rework planetarium code
---		- In progress
+--		- Done
 --		Test test test test
 --		Implement proper challenge waves
 --		- Waves imported from base game, shop is using cathedral waves
@@ -16,10 +16,12 @@ include("roomshit")
 --		- Shit reasonably cleaned
 --		- Getting big enough that it might benefit splitting into a few files for clarity
 --		Should we try and add support for mods to add new room variants?
+--		- Done, I think
 --		Need to ensure compatibility with alt path mod, waiting on team compliance version
 --		- Compatible with Gamonymous version
 --		- Need to recheck this, mod has changed since
 --		Add language support for the modififed EID description
+--		Generate a separate room for Cain's Birthright Arcade?
 
 local CURSE_ID = 83
 local START_TOP_ID = 84
@@ -59,6 +61,9 @@ mod.data = {
 	run = {visitedPlanetarium = false},
 	--config = {}
 }
+
+--this gets recalculated each floor and is only needed then, so whatever
+mod.cainBirthright = false
 
 mod.debug = false
 mod.roomchoice = 0
@@ -240,12 +245,22 @@ function mod:PickSpecialRoom(stage)
 
 		redHeartCount = math.max(redHeartCount, player:GetHearts())
 		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
+
+		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0 then
+			mod.cainBirthright = true
+		end
 	end
 
 	allPlayersRedHeartsOnly = (soulHeartCount == 0)
 	allPlayersSoulHeartsOnly = (redHeartCount == 0)
 
 	-- Special Room
+
+	-- Independent check for Cain Arcades
+	if mod.cainBirthright and rng:RandomInt(2) == 0 then
+		return RoomType.ROOM_ARCADE
+	end
+
 	if rng:RandomInt(7) == 0 or (allPlayersFullHealth and rng:RandomInt(4) == 0) then
 		if rng:RandomInt(50) == 0 or (keyCountTwoOrMore and rng:RandomInt(5) == 0) then
 			return RoomType.ROOM_DICE
@@ -318,6 +333,7 @@ function mod:Init()
 	local currentroomidx = level:GetCurrentRoomDesc().GridIndex
 	local currentroomvisitcount = level:GetRoomByIdx(currentroomidx).VisitedCount
 	local curseRoom = level:GetRoomByIdx(CURSE_ID, 0)
+	local newType = 0
 
 	rng:SetSeed(level:GetDungeonPlacementSeed()+1, 35)
 
@@ -348,9 +364,14 @@ function mod:Init()
 	end
 
 	mod.roomchoice = GreedSpecialRooms.RoomChoice or mod:PickSpecialRoom(stage)
-
+	if mod.roomchoice == RoomType.ROOM_ARCADE and mod.cainBirthright then
+		newType = RoomType.ROOM_ARCADE + 100
+	else
+		newType = mod.roomchoice
+	end
+	debugPrint(newType)
 	if mod.roomchoice > 0 then
-		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. mod.GetRoomID(mod.roomchoice, rng))
+		Isaac.ExecuteCommand("goto s." .. SpecialRoom[mod.roomchoice].string .. "." .. mod.GetRoomID(newType, rng))
 
 		local gotor = level:GetRoomByIdx(-3,0)
 		if gotor.Data then
