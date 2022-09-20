@@ -10,32 +10,16 @@ local PossibleSlots = {
 
 local SHOP_IDX = 71
 
-function script.copyTable(sourceTab)
-	local targetTab = {}
-	sourceTab = sourceTab or {}
+mod.redRoomsGenerated = {}
 
-	if type(sourceTab) ~= "table" then
-		error("[ERROR] - cucco_helper.copyTable - invalid argument #1, table expected, got " .. type(sourceTab), 2)
-	end
-
-	for i, v in pairs(sourceTab) do
-		if type(v) == "table" then
-			targetTab[i] = script.copyTable(sourceTab[i])
-		else
-			targetTab[i] = sourceTab[i]
-		end
-	end
-
-	return targetTab
-end
-
-function mod.GenerateRedRooms(redRoomsRequired)
+function mod.GenerateRedRooms(rng)
 	local level = game:GetLevel()
 	local oldStage = level:GetStage()
 	local oldStageType = level:GetStageType()
 	local oldChallenge = game.Challenge
-	local redRoomsGenerated = {}
-	local tempTable = script.copyTable(PossibleSlots)
+
+	mod.redRoomsGenerated = {}
+	local tempTable = mod.lib.copyTable(PossibleSlots)
 
 	game.Challenge = Challenge.CHALLENGE_RED_REDEMPTION
 	level:SetStage(7, 0)
@@ -43,7 +27,7 @@ function mod.GenerateRedRooms(redRoomsRequired)
 		local slot = rng:RandomInt(#tempTable+1)
 		if game:MakeRedRoomDoor(SHOP_IDX, slot) then
 			redRoomsGenerated[#table+1] = slot
-			if #redRoomsGenerated == redRoomsRequired then
+			if #redRoomsGenerated == mod.redRoomsRequired then
 				break
 			end
 		end
@@ -51,6 +35,4 @@ function mod.GenerateRedRooms(redRoomsRequired)
 	end
 	game.Challenge = oldChallenge
 	level:SetStage(oldStage, oldStageType)
-
-	return redRoomsGenerated
 end

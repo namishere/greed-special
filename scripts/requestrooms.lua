@@ -1,10 +1,10 @@
 local mod = GreedSpecialRooms
 local game = Game()
-local rng = RNG()
+local rng = nil
 
 mod.roomsrequested = {
 	curse = 0,
-	redroom = {
+	redRoom = {
 		planetarium = false,
 		cainArcade = false
 	}
@@ -132,7 +132,7 @@ local function GetCainArcade()
 	return 0
 end
 
-function mod.GetRoomRequests()
+function mod.GetRoomRequests(gRNG)
 	local curseReplacement = nil
 	local rollPlanetarium = false
 	local rollCainArcade = false
@@ -142,7 +142,8 @@ function mod.GetRoomRequests()
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
 	local stageType = level:GetStageType()
-	rng:SetSeed(level:GetDungeonPlacementSeed()+1, 35)
+
+	rng = gRNG
 
 	curseReplacement = PickSpecialRoom(stage)
 	rollCainArcade = GetCainArcade()
@@ -159,7 +160,9 @@ function mod.GetRoomRequests()
 
 	mod.roomsrequested = {
 		curse = curseReplacement,
-		planetarium = rollPlanetarium,
-		cainArcade = rollCainArcade
+		redRoom = {
+			planetarium = rollPlanetarium,
+			cainArcade = rollCainArcade
+		}
 	}
 end
