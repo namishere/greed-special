@@ -33,6 +33,8 @@ local SACRIFICE_MIN = 12
 local TELEPORT_LENGTH_DELAY = 5
 local TELEPORT_LENGTH_ANIM = 20
 
+local CAIN_ARCADE = 109
+
 local DoorVariant = {
 	BOMB = 0,
 	KEY = 1, -- subtype 1 is maus door and strange door??? may be general use
@@ -46,15 +48,24 @@ local DoorVariant = {
 }
 
 local SpecialRoom = {
-	[RoomType.ROOM_ARCADE] = {variant = DoorVariant.KEY, string = "arcade", minimapIcon = "Arcade"},
-	[RoomType.ROOM_CHALLENGE] = {variant = DoorVariant.OPENED, string = "challenge", minimapIcon = "AmbushRoom"},
-	[RoomType.ROOM_LIBRARY] = {variant = DoorVariant.KEY, string = "library", minimapIcon = "Library"},
-	[RoomType.ROOM_SACRIFICE] = {variant = DoorVariant.OPENED, string = "sacrifice", minimapIcon = "SacrificeRoom"},
-	[RoomType.ROOM_ISAACS] = {variant = DoorVariant.BOMB2, string = "isaacs", minimapIcon = "IsaacsRoom"},
-	[RoomType.ROOM_BARREN] = {variant = DoorVariant.BOMB2, string = "barren", minimapIcon = "BarrenRoom"},
-	[RoomType.ROOM_CHEST] = {variant = DoorVariant.KEY2, string = "chest", minimapIcon = "ChestRoom"},
-	[RoomType.ROOM_DICE] = {variant = DoorVariant.KEY2, string = "dice", minimapIcon = "DiceRoom"},
-	[RoomType.ROOM_PLANETARIUM] = {variant = DoorVariant.KEY, string = "planetarium", minimapIcon = "Planetarium"}
+	[RoomType.ROOM_ARCADE] = {variant = DoorVariant.KEY, string = "arcade"},
+	[RoomType.ROOM_CHALLENGE] = {variant = DoorVariant.OPENED, string = "challenge"},
+	[RoomType.ROOM_LIBRARY] = {variant = DoorVariant.KEY, string = "library"},
+	[RoomType.ROOM_SACRIFICE] = {variant = DoorVariant.OPENED, string = "sacrifice"},
+	[RoomType.ROOM_ISAACS] = {variant = DoorVariant.BOMB2, string = "isaacs"},
+	[RoomType.ROOM_BARREN] = {variant = DoorVariant.BOMB2, string = "barren"},
+	[RoomType.ROOM_CHEST] = {variant = DoorVariant.KEY2, string = "chest"},
+	[RoomType.ROOM_DICE] = {variant = DoorVariant.KEY2, string = "dice"},
+	[RoomType.ROOM_PLANETARIUM] = {variant = DoorVariant.KEY, string = "planetarium"},
+
+	[CAIN_ARCADE] = {variant = DoorVariant.KEY, string = "arcade"},
+}
+
+local ShopSlotToRedRoom = {
+	[DoorSlot.LEFT0] = 69,
+	[DoorSlot.UP0] = 57,
+	[DoorSlot.UP1] = 58,
+	[DoorSlot.RIGHT0] = 72
 }
 
 mod.data = {
@@ -66,7 +77,6 @@ mod.data = {
 mod.cainBirthright = false
 
 mod.debug = false
-mod.roomchoice = 0
 mod.lastseed = 0
 
 -- Vars for fake stage transition
@@ -74,6 +84,13 @@ mod.teleportIndex = 0
 mod.teleportStartFrame = 0
 mod.teleportEndFrame = 0
 mod.paused = false
+
+mod.savedrooms = {}
+mod.roomsrequested = {
+	curse = nil,
+	redroom = {}
+}
+mod.roomsgenerated = {}
 
 local function debugPrint(string)
 	if mod.debug and (type(string) == "string") then
@@ -123,13 +140,6 @@ function mod:LoadModData(continuedRun)
 	debugPrint("visitedPlanetarium: "..tostring(mod.data.run.visitedPlanetarium))
 end
 
-function mod.ResetTempVars()
-	mod.paused = false
-	mod.teleportIndex = 0
-	mod.teleportStartFrame = 0
-	mod.teleportEndFrame = 0
-end
-
 mod.delayedFuncs = {}
 function mod:scheduleForUpdate(foo, delay, callback)
     callback = callback or ModCallbacks.MC_POST_UPDATE
@@ -142,6 +152,18 @@ function mod:scheduleForUpdate(foo, delay, callback)
     end
 
     table.insert(mod.delayedFuncs[callback], { Func = foo, Delay = delay })
+end
+
+
+function mod.ResetTempVars()
+	mod.paused = false
+	mod.teleportIndex = 0
+	mod.teleportStartFrame = 0
+	mod.teleportEndFrame = 0
+	mod:scheduleForUpdate(function()
+		mod.savedrooms = {}
+		mod.roomsgenerated = {}
+	end, 0, ModCallbacks.MC_POST_UPDATE)
 end
 
 function mod:UpdateRoomDisplayFlags(initroomdesc)
@@ -164,41 +186,6 @@ function mod:MovePlayersToPos(position)
 			Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(position, 1)
 		end
 	end
-end
-
-function mod:GetCustomPlanetariumChance(level, stage, stageType)
-	local planetariumBonus = 0
-	local stageOffset = -1
-	--If not Alt Path then reduce by 1. For mods where Greed Downpour is a second floor.
-	if stageType >= StageType.STAGETYPE_REPENTANCE then
-		stageOffset = 0
-	end
-	stage = stage + stageOffset
-
-	if game:GetTreasureRoomVisitCount() < stage*2
-	and not(mod.data.run.visitedPlanetarium or level:GetPlanetariumChance() >= 1 ) then
-		--To apply multiple bonus if many Treasure Rooms are skipped and unaccounted for.
-		planetariumBonus = 0.2 * math.ceil((stage*2-game:GetTreasureRoomVisitCount())/2)
-		--Skipping one treasure on Basement and one in Caves should add up to 40% but actually adds up to 20% with this formula, this extra bit helps with that.
-		if stage >= 2 and game:GetTreasureRoomVisitCount()/(stage*2) <= 0.5 and level:GetPlanetariumChance() < 0.2 then
-			planetariumBonus = planetariumBonus + 0.2
-			--If someone wanted to skip one treasure room for 4 floors (until Sheol) it'd be inaccurate again but seems excessive
-
-			--if stage = 4 then
-			--	planetariumBonus = planetariumBonus + 0.2
-			--end
-
-		end
-	end
-
-	debugPrint("Stage used for calc: "..stage)
-	debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
-	debugPrint("Planetarium Visited: "..tostring(mod.data.run.visitedPlanetarium))
-	debugPrint("Natural Planetarium Chance: "..string.format("%.2f", level:GetPlanetariumChance()))
-	debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
-	debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, level:GetPlanetariumChance() + planetariumBonus)))
-
-	return math.min(1, level:GetPlanetariumChance() + planetariumBonus)
 end
 
 function mod:DoPlanetarium(level, levelStage, stageType, rng)
@@ -224,85 +211,7 @@ function mod:DoPlanetarium(level, levelStage, stageType, rng)
 	end
 end
 
-function mod:PickSpecialRoom(stage)
-	--TODO: convert into flag system
-	local allPlayersFullHealth = true
-	local allPlayersRedHeartsOnly = true
-	local allPlayersSoulHeartsOnly = true
 
-	local redHeartCount = 0
-	local soulHeartCount = 0
-	local keyCountTwoOrMore = (Isaac.GetPlayer():GetNumKeys() >= 2)
-	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
-
-	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
-
-	for i = 0, Game():GetNumPlayers() - 1 do
-		local player = Isaac.GetPlayer(i)
-		if allPlayersFullHealth and player:GetMaxHearts() > player:GetHearts() + player:GetSoulHearts() then --bone hearts ignored
-			allPlayersFullHealth = false
-		end
-
-		redHeartCount = math.max(redHeartCount, player:GetHearts())
-		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
-
-		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0 then
-			mod.cainBirthright = true
-		end
-	end
-
-	allPlayersRedHeartsOnly = (soulHeartCount == 0)
-	allPlayersSoulHeartsOnly = (redHeartCount == 0)
-
-	-- Special Room
-
-	-- Independent check for Cain Arcades
-	if mod.cainBirthright and rng:RandomInt(2) == 0 then
-		return RoomType.ROOM_ARCADE
-	end
-
-	if rng:RandomInt(7) == 0 or (allPlayersFullHealth and rng:RandomInt(4) == 0) then
-		if rng:RandomInt(50) == 0 or (keyCountTwoOrMore and rng:RandomInt(5) == 0) then
-			return RoomType.ROOM_DICE
-		else
-			return RoomType.ROOM_SACRIFICE
-		end
-	elseif rng:RandomInt(20) == 0 then
-		return RoomType.ROOM_LIBRARY
-	elseif rng:RandomInt(2) ~= 0 or (devilRoomVisited and rng:RandomInt(4) ~= 0) then
-		--if rng:RandomInt(4) == 0 or (stage == LevelStage.STAGE1_GREED and rng:RandomInt(4) == 0) then
-			--return RoomType.ROOM_MINIBOSS
-		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and rng:RandomInt(2) == 0 then
-			return RoomType.ROOM_CHALLENGE
-		else
-			-- WOW the logic for arcades & vaults is a fucking headache
-			if game:GetLevel():GetStage() % 2 == 0 then
-				local vaultBaseChance = (rng:RandomInt(10) == 0 or (keyCountTwoOrMore and rng:RandomInt(3) == 0))
-				if vaultBaseChance then
-					if not coinCountFifteenOrMore or keyCountTwoOrMore then
-						return RoomType.ROOM_CHEST
-					end
-				elseif coinCountFifteenOrMore then
-					return RoomType.ROOM_ARCADE
-				end
-			end
-
-			--Arcade/Vault logic can fall through without generating either
-			if rng:RandomInt(50) == 0
-			or (((allPlayersRedHeartsOnly and redHeartCount < 4)
-			or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
-			and rng:RandomInt(5) == 0) then
-				if rng:RandomInt(2) == 0 then
-					return RoomType.ROOM_ISAACS
-				else
-					return RoomType.ROOM_BARREN
-				end
-			end
-		end
-	end
-	-- Default to Curse Room
-	return 0
-end
 
 --player:AddControlsCooldown(int) could work too, but we want to mimic the whole game pausing
 function mod:PauseGame(force)
@@ -353,11 +262,11 @@ function mod:Init()
 
 	local planetarium = false
 	if not gplan then
-		local plaenetariumChance = mod:GetCustomPlanetariumChance(level, stage, stageType)
+		local planetariumChance = mod:GetCustomPlanetariumChance(level, stage, stageType)
 		if PlanetariumChance then
 			PlanetariumChance.storage.currentFloorSpawnChance = plaenetariumChance * 100
 		end
-		planetarium = (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < plaenetariumChance))
+		planetarium = (GreedSpecialRooms.Planetarium or (rng:RandomFloat() < planetariumChance))
 		if planetarium then
 			mod:DoPlanetarium(level, stage, stageType, rng)
 		end
