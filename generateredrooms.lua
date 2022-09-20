@@ -10,7 +10,6 @@ local PossibleSlots = {
 
 local SHOP_IDX = 71
 
-local tempTable = {}
 function script.copyTable(sourceTab)
 	local targetTab = {}
 	sourceTab = sourceTab or {}
@@ -32,24 +31,23 @@ end
 
 function mod.GenerateRedRooms(redRoomsRequired)
 	local level = game:GetLevel()
-	local oldChallenge = game.oldChallenge
 	local oldStage = level:GetStage()
 	local oldStageType = level:GetStageType()
+	local oldChallenge = game.Challenge
 	local redRoomsGenerated = {}
-	tempTable = script.copyTable(PossibleSlots)
+	local tempTable = script.copyTable(PossibleSlots)
 
 	game.Challenge = Challenge.CHALLENGE_RED_REDEMPTION
 	level:SetStage(7, 0)
 	for i = 1, # PossibleSlots do
 		local slot = rng:RandomInt(#tempTable+1)
-		if game:MakeRedRoomDoor(SHOP_IDX, ) then
+		if game:MakeRedRoomDoor(SHOP_IDX, slot) then
 			redRoomsGenerated[#table+1] = slot
 			if #redRoomsGenerated == redRoomsRequired then
 				break
 			end
-		else
-			table.remove(tempTable, slot)
 		end
+		table.remove(tempTable, slot)
 	end
 	game.Challenge = oldChallenge
 	level:SetStage(oldStage, oldStageType)
