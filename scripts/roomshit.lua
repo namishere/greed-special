@@ -3,10 +3,13 @@ local mod = GreedSpecialRooms
 local roomTable = {}
 --include("the-everything-function-rev1")
 
+local baseRooms = include("scripts.enums.rooms")
+local alias_table = include("scripts.libs.alias")
 mod.roomInit = false
 
 --Exported function
 function mod.AddSpecialRooms(r)
+	print(dump(r))
 	for idx,v in pairs(r) do
 		roomTable[idx] = {
 			ids = {},
@@ -34,11 +37,11 @@ end
 
 function mod.InitRooms()
 	roomTable  = {}
-	mod.AddSpecialRooms(mod.enum.rooms)
+	mod.AddSpecialRooms(baseRooms)
 
 	for idx,v in pairs(roomTable) do
 		--print(idx)
-		roomTable[idx].sampler = mod.lib.alias_table:new(roomTable[idx].weights)
+		roomTable[idx].sampler = alias_table:new(roomTable[idx].weights)
 		--print(dump(roomTable[idx].sampler))
 	end
 end

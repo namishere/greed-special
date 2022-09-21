@@ -21,8 +21,8 @@ local function PreProcess()
 	mod.startroom = game:GetRoom()
 
 	mod.hasCurseOfTheMaze = false
-	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
-		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
+	if game:GetLevel():GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
+		game:GetLevel():RemoveCurses(LevelCurse.CURSE_OF_MAZE)
 		mod.hasCurseOfTheMaze = true
 	end
 

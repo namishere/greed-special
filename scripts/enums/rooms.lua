@@ -1,6 +1,4 @@
-local mod = GreedSpecialRooms
-
-mod.enum.rooms = {
+return {
 	[RoomType.ROOM_ARCADE] = {
         {id = 0, weight = 1},
         {id = 1, weight = 1},

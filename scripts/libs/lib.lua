@@ -7,7 +7,7 @@ end
 
 mod.lib = {}
 
-mod.lib.alias_table = include("alias")
+--mod.lib.alias_table = include("alias")
 
 function mod.lib.copyTable(sourceTab)
 	local targetTab = {}
@@ -50,6 +50,18 @@ function mod.lib.MovePlayersToPos(position)
 	end
 end
 
+---- scheduling functions utils
+local function runUpdates(tab) --This is from Fiend Folio
+    for i = #tab, 1, -1 do
+        local f = tab[i]
+        f.Delay = f.Delay - 1
+        if f.Delay <= 0 then
+            f.Func()
+            table.remove(tab, i)
+        end
+    end
+end
+
 mod.delayedFuncs = {}
 function mod.lib.scheduleForUpdate(foo, delay, callback)
     callback = callback or ModCallbacks.MC_POST_UPDATE
@@ -64,14 +76,3 @@ function mod.lib.scheduleForUpdate(foo, delay, callback)
     table.insert(mod.delayedFuncs[callback], { Func = foo, Delay = delay })
 end
 
----- scheduling functions utils
-local function runUpdates(tab) --This is from Fiend Folio
-    for i = #tab, 1, -1 do
-        local f = tab[i]
-        f.Delay = f.Delay - 1
-        if f.Delay <= 0 then
-            f.Func()
-            table.remove(tab, i)
-        end
-    end
-end

@@ -10,9 +10,12 @@ mod.roomsrequested = {
 	}
 }
 
-local cainBirthright = false
+--TODO: Save data needs to be reimplemented
+mod.data = {
+	run = { visitedPlanetarium = false }
+}
 
-local CAIN_ARCADE = 109
+local cainBirthright = false
 
 local function PickSpecialRoom(stage)
 	--TODO: convert into flag system
@@ -114,12 +117,12 @@ local function GetCustomPlanetariumChance(baseChance, stage, stageType)
 		end
 	end
 
-	debugPrint("Stage used for calc: "..stage)
-	debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
-	debugPrint("Planetarium Visited: "..tostring(mod.data.run.visitedPlanetarium))
-	debugPrint("Natural Planetarium Chance: "..string.format("%.2f", baseChance))
-	debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
-	debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, baseChance + planetariumBonus)))
+	mod.lib.debugPrint("Stage used for calc: "..stage)
+	mod.lib.debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
+	mod.lib.debugPrint("Planetarium Visited: "..tostring(mod.data.run.visitedPlanetarium))
+	mod.lib.debugPrint("Natural Planetarium Chance: "..string.format("%.2f", baseChance))
+	mod.lib.debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
+	mod.lib.debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, baseChance + planetariumBonus)))
 
 	return math.min(1, baseChance + planetariumBonus)
 end
@@ -127,23 +130,23 @@ end
 --making this a function in case extra conditions are added later
 local function GetCainArcade()
 	if cainBirthright and rng:RandomInt(2) == 0 then
-		return CAIN_ARCADE
+		return mod.enum.CAIN_ARCADE
 	end
 	return 0
 end
 
 function mod.GetRoomRequests(gRNG)
 	local curseReplacement = nil
-	local rollPlanetarium = false
-	local rollCainArcade = false
-
-	local planetariumChance = GetCustomPlanetariumChance(stageType)
+	local rollPlanetarium = 0
+	local rollCainArcade = 0
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
 	local stageType = level:GetStageType()
 
 	rng = gRNG
+
+	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
 
 	curseReplacement = PickSpecialRoom(stage)
 	rollCainArcade = GetCainArcade()
