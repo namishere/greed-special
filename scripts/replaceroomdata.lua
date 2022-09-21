@@ -39,27 +39,32 @@ function mod.ReplaceRoomData(rng)
 		mod.roomsupdated[#mod.roomsupdated] = CURSE_IDX
 		mod.roomsupdated.curse = nil
 	end
+	--TODO: only sometimes works??????
 	if #mod.redRoomsGenerated > 0 then
-		local roomCount = #mod.redRoomsGenerated
 		mod.lib.debugPrint("Red Room Loop")
-		mod.lib.debugPrint("roomCount: "..roomCount)
+		mod.lib.debugPrint("roomCount: "..#mod.redRoomsGenerated)
+		mod.lib.debugPrint(dump(mod.redRoomsGenerated))
 
 		for i,v in pairs(mod.roomdata.redRoom) do
 			print(i.." "..dump(v))
-			local slotIdx = rng:RandomInt(#mod.redRoomsGenerated+1)
+			local idx = rng:RandomInt(#mod.redRoomsGenerated)+1
+			local slotIdx = mod.redRoomsGenerated[idx]
+			print(idx)
+			print(slotIdx)
 			mod.lib.debugPrint("slotIdx: "..slotIdx.." ShopSlotToRedRoom: "..ShopSlotToRedRoom[slotIdx])
 
 			local room = level:GetRoomByIdx(ShopSlotToRedRoom[slotIdx], 0)
 
+			assert(room.Data ~= nil, "huh??? no room data at idx "..ShopSlotToRedRoom[slotIdx].."???")
 			room.Data = mod.roomdata.redRoom[i]
 			room.Flags = 0
 
 			mod.lib.debugPrint("#redRoomsGenerated pre-removal: "..#mod.redRoomsGenerated)
 
-			table.remove(mod.redRoomsGenerated, slotIdx+1)
+			table.remove(mod.redRoomsGenerated, idx)
 			mod.roomdata.redRoom[i] = nil
 
-			mod.roomsupdated[#mod.roomsupdated] = slotIdx
+			mod.roomsupdated[#mod.roomsupdated] = ShopSlotToRedRoom[slotIdx]
 
 			mod.lib.debugPrint("#redRoomsGenerated post-removal: "..#mod.redRoomsGenerated)
 			if #mod.redRoomsGenerated == 0 then

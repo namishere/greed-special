@@ -1,10 +1,5 @@
 local mod = GreedSpecialRooms
 local game = Game()
-
-if mod.debug then
-	include("the-everything-function-rev1")
-end
-
 mod.lib = {}
 
 --mod.lib.alias_table = include("alias")

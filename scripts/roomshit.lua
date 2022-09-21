@@ -9,8 +9,8 @@ mod.roomInit = false
 
 --Exported function
 function mod.AddSpecialRooms(r)
-	print(dump(r))
 	for idx,v in pairs(r) do
+		mod.lib.debugPrint(dump(r))
 		roomTable[idx] = {
 			ids = {},
 			weights = {},
