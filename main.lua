@@ -18,11 +18,12 @@ include("scripts.replaceroomdata")
 include("scripts.dostagetransition")
 
 local function PreProcess()
+	local level = game:GetLevel()
 	mod.startroom = game:GetRoom()
 
 	mod.hasCurseOfTheMaze = false
-	if game:GetLevel():GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
-		game:GetLevel():RemoveCurses(LevelCurse.CURSE_OF_MAZE)
+	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
+		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
 		mod.hasCurseOfTheMaze = true
 	end
 
@@ -33,6 +34,8 @@ local function PreProcess()
 			break
 		end
 	end
+
+	rng:SetSeed(level:GetDungeonPlacementSeed, 35)
 end
 
 function mod.Init()
