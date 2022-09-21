@@ -35,7 +35,7 @@ local function PreProcess()
 		end
 	end
 
-	rng:SetSeed(level:GetDungeonPlacementSeed, 35)
+	rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetAbsoluteStage()), 35)
 end
 
 function mod.Init()
