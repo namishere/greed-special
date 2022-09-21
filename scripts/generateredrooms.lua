@@ -18,13 +18,11 @@ function mod.GenerateRedRooms(rng)
 	local level = game:GetLevel()
 	local oldStage = level:GetStage()
 	local oldStageType = level:GetStageType()
-	local oldChallenge = game.Challenge
 
 	mod.redRoomsGenerated = {}
 	local tempTable = mod.lib.copyTable(PossibleSlots)
 
-	game.Challenge = Challenge.CHALLENGE_RED_REDEMPTION
-	--level:SetStage(7, 0)
+	level:SetStage(7, 0)
 	for i = 1, # PossibleSlots do
 		local idx = rng:RandomInt(#tempTable)+1
 		mod.lib.debugPrint("idx "..idx)
@@ -42,6 +40,5 @@ function mod.GenerateRedRooms(rng)
 		end
 		table.remove(tempTable, idx)
 	end
-	game.Challenge = oldChallenge
-	--level:SetStage(oldStage, oldStageType)
+	level:SetStage(oldStage, oldStageType)
 end
