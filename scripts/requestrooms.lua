@@ -132,13 +132,13 @@ local function GetCainArcade()
 	if cainBirthright and rng:RandomInt(2) == 0 then
 		return mod.enum.CAIN_ARCADE
 	end
-	return -1
+	return RoomType.ROOM_NULL
 end
 
 function mod.GetRoomRequests()
-	local curseReplacement = -1
-	local rollPlanetarium = -1
-	local rollCainArcade = -1
+	local curseReplacement = RoomType.ROOM_NULL
+	local rollPlanetarium = RoomType.ROOM_NULL
+	local rollCainArcade = RoomType.ROOM_NULL
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
@@ -167,5 +167,5 @@ function mod.GetRoomRequests()
 		}
 	}
 
-	print(dump(mod.roomsrequested.redRoom))
+	debugPrint(dump(mod.roomsrequested.redRoom))
 end
