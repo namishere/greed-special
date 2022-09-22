@@ -1,6 +1,12 @@
 local mod = GreedSpecialRooms
 local json = require("json")
 
+mod.data = {
+	run = {
+		visitedPlanetarium = false
+	}
+}
+
 function mod:LoadModData(continuedRun)
 	mod.lib.debugPrint("loading mod data.. continue is "..tostring(continuedRun))
 	local save = {}
@@ -27,6 +33,8 @@ function mod:LoadModData(continuedRun)
 	mod.lib.debugPrint("visitedPlanetarium: "..tostring(mod.data.run.visitedPlanetarium))
 end
 
+mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function() 	mod:SaveData(json.encode(mod.data)) end)
+
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
 	mod:LoadModData(continue)
 	--mod.ResetTempVars()
@@ -40,7 +48,7 @@ mod:AddCallback(ModCallbacks.MC_PRE_GAME_EXIT, function(_, shouldSave)
 end)
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_END, function()
-	mod.ResetTempVars()
+	--mod.ResetTempVars()
 	mod.data.run.visitedPlanetarium = false
 	mod:SaveData(json.encode(mod.data))
 end)

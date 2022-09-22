@@ -2,18 +2,12 @@ GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
 
-mod.debug = true
+mod.debug = false
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false
 mod.lastseed = 1
 mod.rng = RNG()
-
-mod.data = {
-	run = {
-		visitedPlanetarium = false
-	}
-}
 
 include("scripts.libs.the-everything-function-rev1")
 
@@ -21,12 +15,15 @@ include("scripts.libs.lib")
 include("scripts.enums.shared")
 include("scripts.savedata")
 include("scripts.roomshit")
+include("scripts.pause")
 include("scripts.requestrooms")
 include("scripts.getroomdata")
 include("scripts.generateredrooms")
 include("scripts.replaceroomdata")
 include("scripts.dostagetransition")
 include("scripts.modsupport")
+
+include("scripts.sacrifice")
 
 local function PreProcess()
 	local level = game:GetLevel()
@@ -55,23 +52,26 @@ function mod.Init()
 		mod.roomInit = true
 	end
 
-	if game:IsGreedMode() then
+	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
 		--fills mod.startroom, mod.hasCurseOfTheMaze, and mod.hasStairway
+		--also sets rng seed
 		PreProcess()
 
 		--fills mod.roomrequests
 		mod.GetRoomRequests()
 
-		--fills mod.roomdata
-		--and mod.redRoomsRequired
+		--takes mod.roomrequests
+		--fills mod.roomdata, mod.redRoomsRequired, and mod.dotransition
 		mod.GetCustomRoomData()
 
-		--fiils mod.redRoomsGenerated
+		--takes mod.redRoomsRequired and fills mod.redRoomsGenerated
 		mod.GenerateRedRooms()
 
+		--takes mod.roomdata, mod.startroom, and mod.redRoomsGenerated
 		--returns if all red room data was used
 		mod.ReplaceRoomData()
 
+		--takes mod.dotransition and mod.roomsupdated
 		mod.DoStageTransition()
 	end
 end

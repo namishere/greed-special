@@ -31,38 +31,41 @@ end
 
 function mod.DoStageTransition()
 	mod.lib.debugPrint("DoStageTransition")
-	mod.lib.scheduleForUpdate(function()
-		mod.lib.debugPrint("Render")
-		local uLevel = game:GetLevel()
-		game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
-		if mod.hasStairway then
-			Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
-		end
-
-		if #mod.roomsupdated > 0 then
-			for i=1, #mod.roomsupdated do
-				local roomDesc = uLevel:GetRoomByIdx(mod.roomsupdated[i])
-				roomDesc.VisitedCount = 0
-				UpdateRoomDisplayFlags(roomDesc)
+	if mod.dotransition then
+		mod.lib.scheduleForUpdate(function()
+			mod.lib.debugPrint("Render")
+			local uLevel = game:GetLevel()
+			game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
+			if mod.hasStairway then
+				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 			end
-		end
 
-		mod.lib.debugPrint("Calling Update(), pray...")
-		uLevel:Update()
-		--uLevel:UpdateVisibility()
-	end, 0, ModCallbacks.MC_POST_RENDER)
-	mod.lib.scheduleForUpdate(function()
-		mod.lib.debugPrint("Update")
-		local uLevel = game:GetLevel()
-		if mod.hasStairway then
-			Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
-		end
-		if mod.hasCurseOfTheMaze then
-			uLevel:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
-		end
+			if #mod.roomsupdated > 0 then
+				for i=1, #mod.roomsupdated do
+					local roomDesc = uLevel:GetRoomByIdx(mod.roomsupdated[i])
+					roomDesc.VisitedCount = 0
+					UpdateRoomDisplayFlags(roomDesc)
+				end
+			end
 
-		uLevel:UpdateVisibility()
-	end, 0, ModCallbacks.MC_POST_UPDATE)
+			mod.lib.debugPrint("Calling Update(), pray...")
+			uLevel:Update()
+			--uLevel:UpdateVisibility()
+		end, 0, ModCallbacks.MC_POST_RENDER)
+		mod.lib.scheduleForUpdate(function()
+			mod.lib.debugPrint("Update")
+			local uLevel = game:GetLevel()
+			if mod.hasStairway then
+				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
+			end
+			if mod.hasCurseOfTheMaze then
+				uLevel:AddCurse(LevelCurse.CURSE_OF_MAZE, true)
+			end
+
+			uLevel:UpdateVisibility()
+		end, 0, ModCallbacks.MC_POST_UPDATE)
+		mod.dotransition = false
+	end
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()

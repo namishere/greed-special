@@ -48,6 +48,11 @@ local function PickSpecialRoom(stage)
 	allPlayersRedHeartsOnly = (soulHeartCount == 0)
 	allPlayersSoulHeartsOnly = (redHeartCount == 0)
 
+	--force roomtype
+	if mod.RoomChoice and mod.RoomChoice > RoomType.ROOM_NULL then
+		return mod.RoomChoice
+	end
+
 	-- Special Room
 	if rng:RandomInt(7) == 0 or (allPlayersFullHealth and rng:RandomInt(4) == 0) then
 		if rng:RandomInt(50) == 0 or (keyCountTwoOrMore and rng:RandomInt(5) == 0) then

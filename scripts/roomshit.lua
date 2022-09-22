@@ -1,10 +1,9 @@
 local mod = GreedSpecialRooms
 
-local roomTable = {}
---include("the-everything-function-rev1")
-
 local baseRooms = include("scripts.enums.rooms")
 local alias_table = include("scripts.libs.alias")
+
+local roomTable = {}
 mod.roomInit = false
 
 --Exported function
@@ -27,8 +26,9 @@ function mod.AddSpecialRooms(r)
 		print("2: "..dump(roomTable[idx].ids))
 		print("3: "..dump(roomTable[idx].weights))
 		]]--
-
 	end
+	--Reset so sampler will be recalculated next floor
+	mod.roomInit = false
 end
 
 function mod.GetRoomID(rType, rng)
@@ -45,3 +45,9 @@ function mod.InitRooms()
 		--print(dump(roomTable[idx].sampler))
 	end
 end
+
+mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
+	if continue and not mod.roomInit then
+		mod.lib.debugPrint("reinit rooms from continue")
+	end
+end)

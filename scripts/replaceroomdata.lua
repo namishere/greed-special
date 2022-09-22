@@ -25,7 +25,7 @@ function mod.ReplaceRoomData()
 		curseRoom.Data = mod.roomdata.curse
 		curseRoom.Flags = 0
 
-		print(dump(mod.SpecialRoom[mod.roomsrequested.curse]))
+		mod.lib.debugPrint(dump(mod.SpecialRoom[mod.roomsrequested.curse]))
 		door.TargetRoomType = mod.roomsrequested.curse
 		door:SetVariant(mod.SpecialRoom[mod.roomsrequested.curse].variant)
 		door:SetRoomTypes(RoomType.ROOM_DEFAULT, mod.roomsrequested.curse)
@@ -41,14 +41,14 @@ function mod.ReplaceRoomData()
 	if #mod.redRoomsGenerated > 0 then
 		mod.lib.debugPrint("Red Room Loop")
 		mod.lib.debugPrint("roomCount: "..#mod.redRoomsGenerated)
-		mod.lib.debugPrint(dump(mod.redRoomsGenerated))
+		--mod.lib.debugPrint(dump(mod.redRoomsGenerated))
 
 		for i,v in pairs(mod.roomdata.redRoom) do
-			print(i.." "..dump(v))
+			mod.lib.debugPrint(i.." "..dump(v))
 			local idx = rng:RandomInt(#mod.redRoomsGenerated)+1
 			local slotIdx = mod.redRoomsGenerated[idx]
-			print(idx)
-			print(slotIdx)
+			mod.lib.debugPrint(idx)
+			mod.lib.debugPrint(slotIdx)
 			mod.lib.debugPrint("slotIdx: "..slotIdx.." ShopSlotToRedRoom: "..ShopSlotToRedRoom[slotIdx])
 
 			local room = level:GetRoomByIdx(ShopSlotToRedRoom[slotIdx], 0)
@@ -57,14 +57,14 @@ function mod.ReplaceRoomData()
 			room.Data = mod.roomdata.redRoom[i]
 			room.Flags = 0
 
-			mod.lib.debugPrint("#redRoomsGenerated pre-removal: "..#mod.redRoomsGenerated)
+			--mod.lib.debugPrint("#redRoomsGenerated pre-removal: "..#mod.redRoomsGenerated)
 
 			table.remove(mod.redRoomsGenerated, idx)
 			mod.roomdata.redRoom[i] = nil
 
 			mod.roomsupdated[#mod.roomsupdated] = ShopSlotToRedRoom[slotIdx]
 
-			mod.lib.debugPrint("#redRoomsGenerated post-removal: "..#mod.redRoomsGenerated)
+			--mod.lib.debugPrint("#redRoomsGenerated post-removal: "..#mod.redRoomsGenerated)
 			if #mod.redRoomsGenerated == 0 then
 				mod.roomdata = {}
 				return false
