@@ -25,7 +25,7 @@ mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
 		--PlanetariumChance:updatePlanetariumChance()
 	end
-end
+end)
 
 --Music Mod Callback (bugfix)
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, function()

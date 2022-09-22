@@ -9,10 +9,17 @@ mod.hasCurseOfTheMaze = false
 mod.lastseed = 1
 mod.rng = RNG()
 
+mod.data = {
+	run = {
+		visitedPlanetarium = false
+	}
+}
+
 include("scripts.libs.the-everything-function-rev1")
 
 include("scripts.libs.lib")
 include("scripts.enums.shared")
+include("scripts.savedata")
 include("scripts.roomshit")
 include("scripts.requestrooms")
 include("scripts.getroomdata")
@@ -70,3 +77,13 @@ function mod.Init()
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.Init)
+
+function mod.OnNewRoom()
+	if game:GetLevel():GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
+	and game:GetLevel():GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
+		mod.lib.debugPrint("we entered a planetarium")
+		mod.data.run.visitedPlanetarium = true
+	end
+end
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
