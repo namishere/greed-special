@@ -1,5 +1,6 @@
 local mod = GreedSpecialRooms
 local game = Game()
+local rng = mod.rng
 
 local CURSE_IDX = 83
 
@@ -12,15 +13,13 @@ local ShopSlotToRedRoom = {
 
 mod.roomsupdated = {}
 
-function mod.ReplaceRoomData(rng)
+function mod.ReplaceRoomData()
 	mod.lib.debugPrint("ReplaceRoomData")
 	local level = game:GetLevel()
 	local curseRoom = level:GetRoomByIdx(CURSE_IDX, 0)
 	local door = mod.startroom:GetDoor(DoorSlot.LEFT0)
 
 	mod.roomsupdated = {}
-
-	rng:SetSeed(level:GetDungeonPlacementSeed()+1,35)
 
 	if mod.roomdata.curse ~= nil then
 		curseRoom.Data = mod.roomdata.curse
@@ -37,9 +36,8 @@ function mod.ReplaceRoomData(rng)
 		end
 
 		mod.roomsupdated[#mod.roomsupdated] = CURSE_IDX
-		mod.roomsupdated.curse = nil
+		mod.roomdata.curse = nil
 	end
-	--TODO: only sometimes works??????
 	if #mod.redRoomsGenerated > 0 then
 		mod.lib.debugPrint("Red Room Loop")
 		mod.lib.debugPrint("roomCount: "..#mod.redRoomsGenerated)
@@ -72,28 +70,6 @@ function mod.ReplaceRoomData(rng)
 				return false
 			end
 		end
-		--[[
-		for i = 1, roomCount do
-			local slotIdx = rng:RandomInt(#mod.redRoomsGenerated+1)
-			local dataIdx = rng:RandomInt(#mod.roomdata.redRoom+1)
-
-
-			mod.lib.debugPrint("slotIdx: "..slotIdx.." dataIdx: "..dataIdx.." ShopSlotToRedRoom: "..ShopSlotToRedRoom[slotIdx])
-			local room = level:GetRoomByIdx(ShopSlotToRedRoom[slotIdx], 0)
-
-			room.Data = mod.roomdata.redRoom[dataIdx]
-			room.Flags = 0
-
-			table.remove(mod.redRoomsGenerated, slotIdx+1)
-			table.remove(mod.roomdata.redRoom, dataIdx+1)
-
-			mod.roomsupdated[#mod.roomsupdated] = slotIdx
-
-			if #mod.redRoomsGenerated == 0 then
-				return false
-			end
-		end
-		]]--
 	end
 
 	return true

@@ -51,9 +51,9 @@ function alias_table:new(weights)
 end
 
 
-function alias_table:__call()
-  local index = gRng:RandomInt(self.n)+1
-  return gRng:RandomFloat() < self.prob[index] and index or self.alias[index]
+function alias_table:__call(rng)
+  local index = rng:RandomInt(self.n)+1
+  return rng:RandomFloat() < self.prob[index] and index or self.alias[index]
 end
 
 return alias_table

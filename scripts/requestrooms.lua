@@ -1,12 +1,12 @@
 local mod = GreedSpecialRooms
 local game = Game()
-local rng = nil
+local rng = mod.rng
 
 mod.roomsrequested = {
 	curse = 0,
 	redRoom = {
-		planetarium = false,
-		cainArcade = false
+		planetarium = 0,
+		cainArcade = 0
 	}
 }
 
@@ -132,19 +132,17 @@ local function GetCainArcade()
 	if cainBirthright and rng:RandomInt(2) == 0 then
 		return mod.enum.CAIN_ARCADE
 	end
-	return 0
+	return -1
 end
 
-function mod.GetRoomRequests(gRNG)
-	local curseReplacement = nil
-	local rollPlanetarium = 0
-	local rollCainArcade = 0
+function mod.GetRoomRequests()
+	local curseReplacement = -1
+	local rollPlanetarium = -1
+	local rollCainArcade = -1
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
 	local stageType = level:GetStageType()
-
-	rng = gRNG
 
 	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
 
@@ -168,4 +166,6 @@ function mod.GetRoomRequests(gRNG)
 			cainArcade = rollCainArcade
 		}
 	}
+
+	print(dump(mod.roomsrequested.redRoom))
 end

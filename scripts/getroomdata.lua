@@ -1,5 +1,6 @@
 local mod = GreedSpecialRooms
 local game = Game()
+local rng = mod.rng
 
 mod.roomdata = {}
 
@@ -38,7 +39,7 @@ function mod.GetCustomRoomData()
 	for i,v in pairs(mod.roomsrequested.redRoom) do
 		print(i.." "..tostring(v))
 		print(stringToType[i])
-		if stringToType[i] > RoomType.ROOM_NULL and GetRoomData(stringToType[i], false) then
+		if v > RoomType.ROOM_NULL and GetRoomData(stringToType[i], false) then
 			mod.redRoomsRequired = mod.redRoomsRequired + 1
 		end
 	end
