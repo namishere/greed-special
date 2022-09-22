@@ -19,6 +19,7 @@ include("scripts.getroomdata")
 include("scripts.generateredrooms")
 include("scripts.replaceroomdata")
 include("scripts.dostagetransition")
+include("scripts.modsupport")
 
 local function PreProcess()
 	local level = game:GetLevel()

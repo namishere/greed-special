@@ -44,3 +44,11 @@ function mod.GetCustomRoomData()
 		end
 	end
 end
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
+	if game:GetLevel():GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
+	and game:GetLevel():GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
+		mod.lib.debugPrint("we entered a planetarium")
+		--mod.data.run.visitedPlanetarium = true
+	end
+end)
