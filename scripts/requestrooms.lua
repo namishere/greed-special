@@ -167,5 +167,5 @@ function mod.GetRoomRequests()
 		}
 	}
 
-	debugPrint(dump(mod.roomsrequested.redRoom))
+	mod.lib.debugPrint(dump(mod.roomsrequested.redRoom))
 end

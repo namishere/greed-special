@@ -3,6 +3,18 @@ local game = Game()
 
 local START_TOP_ID = 84
 
+local CENTER_POS = Vector(320.0, 280.0)
+local STAIRCASE_POS = Vector(440.0 ,160.0)
+
+local function MovePlayersToPos(position)
+	Isaac.GetPlayer().Position = position
+	if game:GetNumPlayers() > 1 then
+		for i = 1, game:GetNumPlayers() - 1 do
+			Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(position, 1)
+		end
+	end
+end
+
 local function UpdateRoomDisplayFlags(initroomdesc)
 	mod.lib.debugPrint("UpdateRoomDisplayFlags")
 	local level = game:GetLevel()
@@ -52,3 +64,13 @@ function mod.DoStageTransition()
 		uLevel:UpdateVisibility()
 	end, 0, ModCallbacks.MC_POST_UPDATE)
 end
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
+	if mod.lastseed ~= game:GetLevel():GetDungeonPlacementSeed() then
+		MovePlayersToPos(CENTER_POS)
+	end
+end)
+
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
+	mod.lastseed = game:GetLevel():GetDungeonPlacementSeed()
+end)

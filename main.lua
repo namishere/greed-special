@@ -6,6 +6,7 @@ mod.debug = true
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false
+mod.lastseed = 1
 mod.rng = RNG()
 
 include("scripts.libs.the-everything-function-rev1")

@@ -35,16 +35,6 @@ function mod.lib.debugPrint(string)
 	end
 end
 
---TODO: Move later, this belongs to POST_NEW_ROOM
-function mod.lib.MovePlayersToPos(position)
-	Isaac.GetPlayer().Position = position
-	if game:GetNumPlayers() > 1 then
-		for i = 1, game:GetNumPlayers() - 1 do
-			Isaac.GetPlayer(i).Position = Isaac.GetFreeNearPosition(position, 1)
-		end
-	end
-end
-
 ---- scheduling functions utils
 local function runUpdates(tab) --This is from Fiend Folio
     for i = #tab, 1, -1 do
