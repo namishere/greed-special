@@ -17,7 +17,7 @@ mod.data = {
 
 local cainBirthright = false
 
-local function PickSpecialRoom(stage)
+local function PickSpecialRoom(stage, rollCainArcade)
 	--TODO: convert into flag system
 	local allPlayersFullHealth = true
 	local allPlayersRedHeartsOnly = true
@@ -40,7 +40,8 @@ local function PickSpecialRoom(stage)
 		redHeartCount = math.max(redHeartCount, player:GetHearts())
 		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
 
-		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0 then
+		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
+		and rng:RandomInt(2) == 0 then
 			cainBirthright = true
 		end
 	end
@@ -75,7 +76,7 @@ local function PickSpecialRoom(stage)
 					if not coinCountFifteenOrMore or keyCountTwoOrMore then
 						return RoomType.ROOM_CHEST
 					end
-				elseif coinCountFifteenOrMore then
+				elseif coinCountFifteenOrMore and not cainBirthright then
 					return RoomType.ROOM_ARCADE
 				end
 			end
@@ -134,7 +135,7 @@ end
 
 --making this a function in case extra conditions are added later
 local function GetCainArcade()
-	if cainBirthright and rng:RandomInt(2) == 0 then
+	if cainBirthright then
 		return mod.enum.CAIN_ARCADE
 	end
 	return RoomType.ROOM_NULL
@@ -151,11 +152,12 @@ function mod.GetRoomRequests()
 
 	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
 
-	curseReplacement = PickSpecialRoom(stage)
+	curseReplacement = PickSpecialRoom(stage, rollCainArcade)
 	rollCainArcade = GetCainArcade()
 
 	if not gplan then
 		if PlanetariumChance then
+			PlanetariumChance.storage.canPlanetariumsSpawn = true
 			PlanetariumChance.storage.currentFloorSpawnChance = planetariumChance * 100
 		end
 

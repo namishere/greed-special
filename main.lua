@@ -2,7 +2,7 @@ GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
 
-mod.debug = false
+mod.debug = true
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false

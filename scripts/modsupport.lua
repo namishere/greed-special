@@ -20,10 +20,12 @@ if EID then
 end
 
 --Planetarium Chance
-mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function()
+mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, function(_, continue)
 	if PlanetariumChance and game:IsGreedMode() then
 		PlanetariumChance.storage.canPlanetariumsSpawn = true
-		--PlanetariumChance:updatePlanetariumChance()
+		if not continue then
+			PlanetariumChance.storage.currentFloorSpawnChance = game:GetLevel():GetPlanetariumChance() * 100
+		end
 	end
 end)
 
