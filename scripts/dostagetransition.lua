@@ -15,6 +15,21 @@ local function MovePlayersToPos(position)
 	end
 end
 
+--StartRoomTransition stops Golem's subway entrance from spawning?????
+local function StupidGodDamnGolemCheck()
+	if game:GetFrameCount() <= 1 then
+		local golem = Isaac.GetPlayerTypeByName("Golem")
+		for i = 0, game:GetNumPlayers() - 1 do
+			print(Isaac.GetPlayer(i):GetPlayerType().." vs "..golem)
+			if Isaac.GetPlayer(i):GetPlayerType() == golem then
+				Isaac.ExecuteCommand("goto 6 7 0")
+				return
+			end
+		end
+		game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
+	end
+end
+
 local function UpdateRoomDisplayFlags(initroomdesc)
 	mod.lib.debugPrint("UpdateRoomDisplayFlags")
 	local level = game:GetLevel()
@@ -35,11 +50,11 @@ function mod.DoStageTransition()
 		mod.lib.scheduleForUpdate(function()
 			mod.lib.debugPrint("Render")
 			local uLevel = game:GetLevel()
-			game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
+			StupidGodDamnGolemCheck()
+			--game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
 			if mod.hasStairway then
 				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 			end
-
 			if #mod.roomsupdated > 0 then
 				for i=1, #mod.roomsupdated do
 					local roomDesc = uLevel:GetRoomByIdx(mod.roomsupdated[i])
