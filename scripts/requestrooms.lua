@@ -2,11 +2,14 @@ local mod = GreedSpecialRooms
 local game = Game()
 local rng = mod.rng
 
+--the var names in here are tied to stringToType in getroomdata
+--TODO: tie the two together?
 mod.roomsrequested = {
-	curse = 0,
+	curse = RoomType.ROOM_NULL,
 	redRoom = {
-		planetarium = 0,
-		cainArcade = 0
+		planetarium = RoomType.ROOM_NULL,
+		cainArcade = RoomType.ROOM_NULL,
+		extraCurse = RoomType.ROOM_NULL
 	}
 }
 
@@ -16,6 +19,7 @@ mod.data = {
 }
 
 local cainBirthright = false
+local voodooHead = false
 
 local function PickSpecialRoom(stage, rollCainArcade)
 	--TODO: convert into flag system
@@ -29,6 +33,7 @@ local function PickSpecialRoom(stage, rollCainArcade)
 	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
 	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
+	voodooHead = false
 	cainBirthright = false
 
 	for i = 0, game:GetNumPlayers() - 1 do
@@ -43,6 +48,10 @@ local function PickSpecialRoom(stage, rollCainArcade)
 		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
 		and rng:RandomInt(2) == 0 then
 			cainBirthright = true
+		end
+
+		if player:GetCollectibleNum(CollectibleType.COLLECTIBLE_VOODOO_HEAD) > 0 then
+			voodooHead = true
 		end
 	end
 
@@ -141,10 +150,19 @@ local function GetCainArcade()
 	return RoomType.ROOM_NULL
 end
 
+--same here
+local function GetExtraCurseRoom()
+	if voodooHead then
+		return mod.enum.VOODOO_CURSE
+	end
+	return RoomType.ROOM_NULL
+end
+
 function mod.GetRoomRequests()
 	local curseReplacement = RoomType.ROOM_NULL
 	local rollPlanetarium = RoomType.ROOM_NULL
 	local rollCainArcade = RoomType.ROOM_NULL
+	local rollVoodooHead = RoomType.ROOM_NULL
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
@@ -154,6 +172,7 @@ function mod.GetRoomRequests()
 
 	curseReplacement = PickSpecialRoom(stage, rollCainArcade)
 	rollCainArcade = GetCainArcade()
+	rollVoodooHead = GetExtraCurseRoom()
 
 	if not gplan then
 		if PlanetariumChance then
@@ -170,7 +189,8 @@ function mod.GetRoomRequests()
 		curse = curseReplacement,
 		redRoom = {
 			planetarium = rollPlanetarium,
-			cainArcade = rollCainArcade
+			cainArcade = rollCainArcade,
+			extraCurse = rollVoodooHead
 		}
 	}
 

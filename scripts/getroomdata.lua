@@ -7,7 +7,8 @@ mod.dotransition = false
 
 local stringToType = {
 	["planetarium"] = RoomType.ROOM_PLANETARIUM,
-	["cainArcade"] = mod.enum.CAIN_ARCADE
+	["cainArcade"] = mod.enum.CAIN_ARCADE,
+	["extraCurse"] = mod.enum.VOODOO_CURSE
 }
 
 local function GetRoomData(key, curse)

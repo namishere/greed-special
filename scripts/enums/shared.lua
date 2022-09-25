@@ -3,6 +3,7 @@ local mod = GreedSpecialRooms
 mod.enum = {}
 
 mod.enum.CAIN_ARCADE = RoomType.ROOM_ARCADE + 100
+mod.enum.VOODOO_CURSE = RoomType.ROOM_CURSE + 100
 
 mod.SpecialRoom = {
 	[RoomType.ROOM_ARCADE] = {variant = DoorVariant.DOOR_LOCKED, string = "arcade"},
@@ -16,4 +17,5 @@ mod.SpecialRoom = {
 	[RoomType.ROOM_PLANETARIUM] = {variant = DoorVariant.DOOR_LOCKED, string = "planetarium"},
 
 	[mod.enum.CAIN_ARCADE] = {variant = DoorVariant.DOOR_LOCKED, string = "arcade"},
+	[mod.enum.VOODOO_CURSE] = {variant = DoorVariant.DOOR_UNLOCKED, string = "curse"}
 }

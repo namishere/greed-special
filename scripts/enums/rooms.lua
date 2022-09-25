@@ -237,5 +237,17 @@ return {
         {id = 2, weight = 1},
         {id = 3, weight = .5},
         {id = 4, weight = .25}
+    },
+    --Voodoo Head curse room
+    [RoomType.ROOM_CURSE + 100] = {
+        {id = 10001, weight = 1},
+        {id = 10002, weight = 1},
+        {id = 10003, weight = 1},
+        {id = 10004, weight = 1},
+        {id = 10005, weight = .25},
+        {id = 10006, weight = 1},
+        {id = 10007, weight = 1},
+        {id = 10008, weight = 1},
+        {id = 10009, weight = .1}
     }
 }

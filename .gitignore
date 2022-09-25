@@ -2,3 +2,4 @@ disable.it
 disable.it.x
 .vscode
 .luarc.json
+/debug-key.lua
