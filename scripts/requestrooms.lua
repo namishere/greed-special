@@ -157,6 +157,7 @@ function mod.GetRoomRequests()
 
 	if not gplan then
 		if PlanetariumChance then
+			PlanetariumChance.storage.canPlanetariumsSpawn = true
 			PlanetariumChance.storage.currentFloorSpawnChance = planetariumChance * 100
 		end
 

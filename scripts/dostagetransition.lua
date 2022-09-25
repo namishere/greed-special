@@ -20,7 +20,7 @@ local function StupidGodDamnGolemCheck()
 	if game:GetFrameCount() <= 1 then
 		local golem = Isaac.GetPlayerTypeByName("Golem")
 		for i = 0, game:GetNumPlayers() - 1 do
-			print(Isaac.GetPlayer(i):GetPlayerType().." vs "..golem)
+			mod.lib.debugPrint(Isaac.GetPlayer(i):GetPlayerType().." vs "..golem)
 			if Isaac.GetPlayer(i):GetPlayerType() == golem then
 				Isaac.ExecuteCommand("goto 6 7 0")
 				return
