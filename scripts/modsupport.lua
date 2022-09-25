@@ -4,7 +4,7 @@ local game = Game()
 --External Item Descriptions
 if EID then
 	local function HandleSacrificeRoomEID(descObj)
-		if game:IsGreedMode()
+		if game:IsGreedMode() and game:GetLevel():GetStage() == LevelStage.STAGE1_GREED
 		and descObj.ObjType == -999 and descObj.ObjVariant == -1 then
 			local curCounter = descObj.ObjSubType or 1
 			if curCounter <= 2 then
