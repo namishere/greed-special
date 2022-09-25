@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
-    <name>More Special Rooms in Greed</name>
+    <name>More Special Rooms in Greed Mode</name>
     <directory>more special rooms in greed</directory>
     <id>2838468961</id>
     <description>Don't you think that having only Curse Rooms in Greed Mode is dumb? Well, this mod fixes this!
@@ -10,7 +10,7 @@ This mod is compatible with:
 [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2818356312]Tainted Treasures![/url]
 [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2717876263]Alt path in Greed Mode![/url]
 [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2626756137]Greed Mode Improved![/url]</description>
-    <version>1.7</version>
+    <version>1.8</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>
