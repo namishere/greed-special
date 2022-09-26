@@ -1,1 +1,0 @@
-GreedSpecialRooms.debug = true

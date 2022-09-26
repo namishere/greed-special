@@ -9,15 +9,6 @@ mod.hasCurseOfTheMaze = false
 mod.lastseed = 1
 mod.rng = RNG()
 
---enables mod.debug
---by adding debug-key to gitignore we can effectively switch on debug mode locally
---without having to switch it off before doing a release
---you just throw the file in the root directory, mod picks it up, git ignores it
---for the record, the contents of debug-key is literally just
---		GreedSpecialRooms.debug = true
---you can even grab it from scripts/enums
-pcall(require("debug-key"))
-
 include("scripts.libs.the-everything-function-rev1")
 
 include("scripts.libs.lib")
