@@ -3,7 +3,8 @@ local game = Game()
 local rng = mod.rng
 
 --the var names in here are tied to stringToType in getroomdata
---TODO: tie the two together?
+--TODO: this scheme doesn't really make sense. turn the values into
+--		a table formatted {type = RoomType, string = [string used by goto]
 mod.roomsrequested = {
 	curse = RoomType.ROOM_NULL,
 	redRoom = {
@@ -13,7 +14,6 @@ mod.roomsrequested = {
 	}
 }
 
---TODO: Save data needs to be reimplemented
 mod.data = {
 	run = { visitedPlanetarium = false }
 }
@@ -21,7 +21,7 @@ mod.data = {
 local cainBirthright = false
 local voodooHead = false
 
-local function PickSpecialRoom(stage, rollCainArcade)
+local function PickSpecialRoom(stage)
 	--TODO: convert into flag system
 	local allPlayersFullHealth = true
 	local allPlayersRedHeartsOnly = true

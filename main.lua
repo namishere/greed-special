@@ -6,7 +6,6 @@ mod.debug = false
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false
-mod.lastseed = 1
 mod.rng = RNG()
 
 include("scripts.libs.the-everything-function-rev1")
@@ -47,6 +46,7 @@ local function PreProcess()
 end
 
 function mod.Init()
+	-- Do this outside of PreProcess because I want it done asap
 	if not mod.roomInit then
 		mod.InitRooms()
 		mod.roomInit = true
