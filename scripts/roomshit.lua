@@ -9,7 +9,7 @@ mod.roomInit = false
 --Exported function
 function mod.AddSpecialRooms(r)
 	for idx,v in pairs(r) do
-		mod.lib.debugPrint(dump(r))
+		--mod.lib.debugPrint(dump(r))
 		roomTable[idx] = {
 			ids = {},
 			weights = {},
@@ -21,11 +21,11 @@ function mod.AddSpecialRooms(r)
 			roomTable[idx].weights[i] = v[i].weight
 		end
 
-		--[[
+	--[[
 		print("1: "..dump(roomTable))
 		print("2: "..dump(roomTable[idx].ids))
 		print("3: "..dump(roomTable[idx].weights))
-		]]--
+	]]--
 	end
 	--Reset so sampler will be recalculated next floor
 	mod.roomInit = false

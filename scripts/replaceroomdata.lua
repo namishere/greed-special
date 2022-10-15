@@ -14,7 +14,7 @@ local ShopSlotToRedRoom = {
 mod.roomsupdated = {}
 
 function mod.ReplaceRoomData()
-	mod.lib.debugPrint("ReplaceRoomData")
+	mod.lib.debugPrint("ReplaceRoomData start")
 	local level = game:GetLevel()
 	local curseRoom = level:GetRoomByIdx(CURSE_IDX, 0)
 	local door = mod.startroom:GetDoor(DoorSlot.LEFT0)
@@ -22,6 +22,7 @@ function mod.ReplaceRoomData()
 	mod.roomsupdated = {}
 
 	if mod.roomdata.curse ~= nil then
+		mod.lib.debugPrint("Curse Room")
 		curseRoom.Data = mod.roomdata.curse
 		curseRoom.Flags = 0
 
@@ -67,10 +68,12 @@ function mod.ReplaceRoomData()
 			--mod.lib.debugPrint("#redRoomsGenerated post-removal: "..#mod.redRoomsGenerated)
 			if #mod.redRoomsGenerated == 0 then
 				mod.roomdata = {}
+				mod.lib.debugPrint("ReplaceRoomData: ran out of red rooms!")
 				return false
 			end
 		end
 	end
+	mod.lib.debugPrint("ReplaceRoomData finished succesfully")
 
 	return true
 end

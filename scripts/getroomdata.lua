@@ -11,6 +11,8 @@ local stringToType = {
 	["extraCurse"] = mod.enum.VOODOO_CURSE
 }
 
+
+
 local function GetRoomData(key, curse)
 	mod.lib.debugPrint("GetRoomData.. key: "..key.." curse: "..tostring(curse))
 	local level = game:GetLevel()
@@ -40,8 +42,10 @@ function mod.GetCustomRoomData()
 	end
 	mod.redRoomsRequired = 0
 	for i,v in pairs(mod.roomsrequested.redRoom) do
-		mod.lib.debugPrint(i.." "..tostring(v))
+	--[[
+		mod.lib.debugPrint(i.." = " ..tostring(v))
 		mod.lib.debugPrint(stringToType[i])
+	]]--
 		if v > RoomType.ROOM_NULL and GetRoomData(stringToType[i], false) then
 			mod.redRoomsRequired = mod.redRoomsRequired + 1
 		end

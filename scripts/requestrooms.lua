@@ -132,12 +132,14 @@ local function GetCustomPlanetariumChance(baseChance, stage, stageType)
 		end
 	end
 
+--[[
 	mod.lib.debugPrint("Stage used for calc: "..stage)
 	mod.lib.debugPrint("Tresure Rooms Visited: "..game:GetTreasureRoomVisitCount())
 	mod.lib.debugPrint("Planetarium Visited: "..tostring(mod.data.run.visitedPlanetarium))
 	mod.lib.debugPrint("Natural Planetarium Chance: "..string.format("%.2f", baseChance))
 	mod.lib.debugPrint("Bonus Planetarium Chance: "..string.format("%.2f",planetariumBonus))
 	mod.lib.debugPrint("Full Planetarium Chance: "..string.format("%.2f", math.min(1, baseChance + planetariumBonus)))
+]]--
 
 	return math.min(1, baseChance + planetariumBonus)
 end
@@ -194,5 +196,6 @@ function mod.GetRoomRequests()
 		}
 	}
 
+	mod.lib.debugPrint("curse = "..mod.roomsrequested.curse)
 	mod.lib.debugPrint(dump(mod.roomsrequested.redRoom))
 end

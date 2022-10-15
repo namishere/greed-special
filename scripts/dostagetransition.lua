@@ -22,7 +22,7 @@ local function StupidGodDamnGolemCheck()
 	if game:GetFrameCount() <= 1 then
 		local golem = Isaac.GetPlayerTypeByName("Golem")
 		for i = 0, game:GetNumPlayers() - 1 do
-			mod.lib.debugPrint(Isaac.GetPlayer(i):GetPlayerType().." vs "..golem)
+			mod.lib.debugPrint("Golem check: "..Isaac.GetPlayer(i):GetPlayerType().." vs "..golem)
 			if Isaac.GetPlayer(i):GetPlayerType() == golem then
 				Isaac.ExecuteCommand("goto 6 7 0")
 				return
@@ -47,10 +47,10 @@ local function UpdateRoomDisplayFlags(initroomdesc)
 end
 
 function mod.DoStageTransition()
-	mod.lib.debugPrint("DoStageTransition")
 	if mod.dotransition then
+		mod.lib.debugPrint("DoStageTransition queued")
 		mod.lib.scheduleForUpdate(function()
-			mod.lib.debugPrint("Render")
+			mod.lib.debugPrint("DoStageTransition (render)")
 			local uLevel = game:GetLevel()
 			StupidGodDamnGolemCheck()
 			--game:StartRoomTransition(START_TOP_ID, Direction.DOWN, RoomTransitionAnim.MAZE)
@@ -70,7 +70,7 @@ function mod.DoStageTransition()
 			--uLevel:UpdateVisibility()
 		end, 0, ModCallbacks.MC_POST_RENDER)
 		mod.lib.scheduleForUpdate(function()
-			mod.lib.debugPrint("Update")
+			mod.lib.debugPrint("DoStageTransition (update)")
 			local uLevel = game:GetLevel()
 			if mod.hasStairway then
 				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
@@ -82,6 +82,8 @@ function mod.DoStageTransition()
 			uLevel:UpdateVisibility()
 		end, 0, ModCallbacks.MC_POST_UPDATE)
 		mod.dotransition = false
+	else
+		mod.lib.debugPrint("DoStageTransition not needed")
 	end
 end
 

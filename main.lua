@@ -45,6 +45,8 @@ local function PreProcess()
 	mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetAbsoluteStage()), 35)
 end
 
+
+local frameLastInit = 0
 function mod.Init()
 	-- Do this outside of PreProcess because I want it done asap
 	if not mod.roomInit then
@@ -53,26 +55,36 @@ function mod.Init()
 	end
 
 	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
-		--fills mod.startroom, mod.hasCurseOfTheMaze, and mod.hasStairway
-		--also sets rng seed
-		PreProcess()
+		mod.lib.debugPrint("GreedSpecialRooms.Init() started")
 
-		--fills mod.roomrequests
-		mod.GetRoomRequests()
+		if game:GetFrameCount() ~= frameLastInit or game:GetFrameCount() == 0 then
+			--fills mod.startroom, mod.hasCurseOfTheMaze, and mod.hasStairway
+			--also sets rng seed
+			PreProcess()
 
-		--takes mod.roomrequests
-		--fills mod.roomdata, mod.redRoomsRequired, and mod.dotransition
-		mod.GetCustomRoomData()
+			--fills mod.roomrequests
+			mod.GetRoomRequests()
 
-		--takes mod.redRoomsRequired and fills mod.redRoomsGenerated
-		mod.GenerateRedRooms()
+			--takes mod.roomrequests
+			--fills mod.roomdata, mod.redRoomsRequired, and mod.dotransition
+			mod.GetCustomRoomData()
 
-		--takes mod.roomdata, mod.startroom, and mod.redRoomsGenerated
-		--returns if all red room data was used
-		mod.ReplaceRoomData()
+			--takes mod.redRoomsRequired and fills mod.redRoomsGenerated
+			mod.GenerateRedRooms()
 
-		--takes mod.dotransition and mod.roomsupdated
-		mod.DoStageTransition()
+			--takes mod.roomdata, mod.startroom, and mod.redRoomsGenerated
+			--returns if all red room data was used
+			mod.ReplaceRoomData()
+
+			--takes mod.dotransition and mod.roomsupdated
+			mod.DoStageTransition()
+
+		else
+			mod.lib.debugPrint("hey, what the fuck now? get out of here")
+		end
+
+		frameLastInit = game:GetFrameCount()
+		mod.lib.debugPrint("GreedSpecialRooms.Init() finished")
 	end
 end
 

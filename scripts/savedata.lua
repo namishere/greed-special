@@ -8,7 +8,8 @@ mod.data = {
 }
 
 function mod:LoadModData(continuedRun)
-	mod.lib.debugPrint("loading mod data.. continue is "..tostring(continuedRun))
+	mod.lib.debugPrint("GreedSpecialRooms.LoadModData() started")
+	mod.lib.debugPrint("continuedRun: "..tostring(continuedRun))
 	local save = {}
 	if mod:HasData() then
 		mod.lib.debugPrint("data exists")
@@ -31,6 +32,7 @@ function mod:LoadModData(continuedRun)
 		mod.data.run.visitedPlanetarium = result
 	end
 	mod.lib.debugPrint("visitedPlanetarium: "..tostring(mod.data.run.visitedPlanetarium))
+	mod.lib.debugPrint("GreedSpecialRooms.LoadModData() finished")
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, function() 	mod:SaveData(json.encode(mod.data)) end)

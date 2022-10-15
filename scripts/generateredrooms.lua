@@ -14,9 +14,8 @@ local SHOP_IDX = 70
 mod.redRoomsGenerated = {}
 
 function mod.GenerateRedRooms()
-	mod.lib.debugPrint("GenerateRedRooms")
-	mod.lib.debugPrint("redRoomsRequired: "..mod.redRoomsRequired)
 	if mod.redRoomsRequired > 0 then
+		mod.lib.debugPrint("GenerateRedRooms: generating "..mod.redRoomsRequired.." rooms")
 		local level = game:GetLevel()
 		local oldStage = level:GetStage()
 		local oldStageType = level:GetStageType()
@@ -43,5 +42,7 @@ function mod.GenerateRedRooms()
 			table.remove(tempTable, idx)
 		end
 		level:SetStage(oldStage, oldStageType)
+	else
+		mod.lib.debugPrint("GenerateRedRooms: nothing to generate")
 	end
 end
