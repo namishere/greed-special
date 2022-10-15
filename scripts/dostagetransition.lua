@@ -46,6 +46,21 @@ local function UpdateRoomDisplayFlags(initroomdesc)
 	end
 end
 
+function mod.UpdateMinimap()
+	if #mod.roomsupdated > 0 then
+		mod.lib.debugPrint("GreedSpecialRooms.UpdateMinimap(): updating "..#mod.roomsupdated.." rooms")
+		for i=1, #mod.roomsupdated do
+			local level = game:GetLevel()
+			local roomDesc = level:GetRoomByIdx(mod.roomsupdated[i])
+			roomDesc.VisitedCount = 0
+			UpdateRoomDisplayFlags(roomDesc)
+		end
+	else
+		mod.lib.debugPrint("GreedSpecialRooms.UpdateMinimap(): no rooms to update")
+	end
+end
+
+
 function mod.DoStageTransition()
 	if mod.dotransition then
 		mod.lib.debugPrint("DoStageTransition queued")
@@ -57,13 +72,7 @@ function mod.DoStageTransition()
 			if mod.hasStairway then
 				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 			end
-			if #mod.roomsupdated > 0 then
-				for i=1, #mod.roomsupdated do
-					local roomDesc = uLevel:GetRoomByIdx(mod.roomsupdated[i])
-					roomDesc.VisitedCount = 0
-					UpdateRoomDisplayFlags(roomDesc)
-				end
-			end
+			mod.UpdateMinimap()
 
 			mod.lib.debugPrint("Calling Update(), pray...")
 			uLevel:Update()

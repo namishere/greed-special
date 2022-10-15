@@ -36,7 +36,7 @@ function mod.ReplaceRoomData()
 			MinimapAPI:GetRoomByIdx(CURSE_IDX, 0):UpdateType()
 		end
 
-		mod.roomsupdated[#mod.roomsupdated] = CURSE_IDX
+		mod.roomsupdated[#mod.roomsupdated+1] = CURSE_IDX
 		mod.roomdata.curse = nil
 	end
 	if #mod.redRoomsGenerated > 0 then
@@ -45,6 +45,12 @@ function mod.ReplaceRoomData()
 		--mod.lib.debugPrint(dump(mod.redRoomsGenerated))
 
 		for i,v in pairs(mod.roomdata.redRoom) do
+			if #mod.redRoomsGenerated == 0 then
+				mod.roomdata = {}
+				mod.lib.debugPrint("ReplaceRoomData: ran out of red rooms!")
+				return false
+			end
+
 			mod.lib.debugPrint(i.." "..dump(v))
 			local idx = rng:RandomInt(#mod.redRoomsGenerated)+1
 			local slotIdx = mod.redRoomsGenerated[idx]
@@ -63,14 +69,9 @@ function mod.ReplaceRoomData()
 			table.remove(mod.redRoomsGenerated, idx)
 			mod.roomdata.redRoom[i] = nil
 
-			mod.roomsupdated[#mod.roomsupdated] = ShopSlotToRedRoom[slotIdx]
+			mod.roomsupdated[#mod.roomsupdated+1] = ShopSlotToRedRoom[slotIdx]
 
 			--mod.lib.debugPrint("#redRoomsGenerated post-removal: "..#mod.redRoomsGenerated)
-			if #mod.redRoomsGenerated == 0 then
-				mod.roomdata = {}
-				mod.lib.debugPrint("ReplaceRoomData: ran out of red rooms!")
-				return false
-			end
 		end
 	end
 	mod.lib.debugPrint("ReplaceRoomData finished succesfully")

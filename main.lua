@@ -81,6 +81,12 @@ function mod.Init()
 
 		else
 			mod.lib.debugPrint("hey, what the fuck now? get out of here")
+			for _,v in ipairs(mod.roomsupdated) do
+				if MinimapAPI then
+					MinimapAPI:GetRoomByIdx(v, 0):UpdateType()
+				end
+			end
+			mod.UpdateMinimap()
 		end
 
 		frameLastInit = game:GetFrameCount()
