@@ -32,10 +32,6 @@ function mod.ReplaceRoomData()
 		door:SetRoomTypes(RoomType.ROOM_DEFAULT, mod.roomsrequested.curse)
 		door:Update()
 
-		if MinimapAPI then
-			MinimapAPI:GetRoomByIdx(CURSE_IDX, 0):UpdateType()
-		end
-
 		mod.roomsupdated[#mod.roomsupdated+1] = CURSE_IDX
 		mod.roomdata.curse = nil
 	end
