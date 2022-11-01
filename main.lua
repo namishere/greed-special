@@ -83,7 +83,7 @@ function mod.Init()
 			mod.lib.debugPrint("hey, what the fuck now? get out of here")
 			for _,v in ipairs(mod.roomsupdated) do
 				if MinimapAPI then
-					MinimapAPI:GetRoomByIdx(v, 0):UpdateType()
+					MinimapAPI:GetRoomByIdx(v, 0):SyncRoomDescriptor()
 				end
 			end
 			mod.UpdateMinimap()

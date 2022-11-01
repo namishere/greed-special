@@ -33,7 +33,7 @@ function mod.ReplaceRoomData()
 		door:Update()
 
 		if MinimapAPI then
-			MinimapAPI:GetRoomByIdx(CURSE_IDX, 0):UpdateType()
+			MinimapAPI:GetRoomByIdx(CURSE_IDX, 0):SyncRoomDescriptor()
 		end
 
 		mod.roomsupdated[#mod.roomsupdated+1] = CURSE_IDX
