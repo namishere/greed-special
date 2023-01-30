@@ -2,8 +2,6 @@ local mod = GreedSpecialRooms
 local game = Game()
 local rng = mod.rng
 
-local CURSE_IDX = 83
-
 local ShopSlotToRedRoom = {
 	[DoorSlot.LEFT0] = 69,
 	[DoorSlot.UP0] = 57,
@@ -16,7 +14,7 @@ mod.roomsupdated = {}
 function mod.ReplaceRoomData()
 	mod.lib.debugPrint("ReplaceRoomData start")
 	local level = game:GetLevel()
-	local curseRoom = level:GetRoomByIdx(CURSE_IDX, 0)
+	local curseRoom = level:GetRoomByIdx(mod.enum.CURSE_IDX, 0)
 	local door = mod.startroom:GetDoor(DoorSlot.LEFT0)
 
 	mod.roomsupdated = {}
@@ -33,10 +31,10 @@ function mod.ReplaceRoomData()
 		door:Update()
 
 		if MinimapAPI then
-			MinimapAPI:GetRoomByIdx(CURSE_IDX, 0):SyncRoomDescriptor()
+			MinimapAPI:GetRoomByIdx(mod.enum.CURSE_IDX, 0):SyncRoomDescriptor()
 		end
 
-		mod.roomsupdated[#mod.roomsupdated+1] = CURSE_IDX
+		mod.roomsupdated[#mod.roomsupdated+1] = mod.enum.CURSE_IDX
 		mod.roomdata.curse = nil
 	end
 	if #mod.redRoomsGenerated > 0 then
@@ -44,7 +42,7 @@ function mod.ReplaceRoomData()
 		mod.lib.debugPrint("roomCount: "..#mod.redRoomsGenerated)
 		--mod.lib.debugPrint(dump(mod.redRoomsGenerated))
 
-		for i,v in pairs(mod.roomdata.redRoom) do
+		for i,v in pairs(mod.roomdata.redRoom[mod.enum.SHOP_IDX]) do
 			if #mod.redRoomsGenerated == 0 then
 				mod.roomdata = {}
 				mod.lib.debugPrint("ReplaceRoomData: ran out of red rooms!")
@@ -61,13 +59,13 @@ function mod.ReplaceRoomData()
 			local room = level:GetRoomByIdx(ShopSlotToRedRoom[slotIdx], 0)
 
 			assert(room.Data ~= nil, "huh??? no room data at idx "..ShopSlotToRedRoom[slotIdx].."???")
-			room.Data = mod.roomdata.redRoom[i]
+			room.Data = mod.roomdata.redRoom[mod.enum.SHOP_IDX][i]
 			room.Flags = 0
 
 			--mod.lib.debugPrint("#redRoomsGenerated pre-removal: "..#mod.redRoomsGenerated)
 
 			table.remove(mod.redRoomsGenerated, idx)
-			mod.roomdata.redRoom[i] = nil
+			mod.roomdata.redRoom[mod.enum.SHOP_IDX][i] = nil
 
 			mod.roomsupdated[#mod.roomsupdated+1] = ShopSlotToRedRoom[slotIdx]
 

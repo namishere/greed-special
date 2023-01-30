@@ -8,9 +8,14 @@ local rng = mod.rng
 mod.roomsrequested = {
 	curse = RoomType.ROOM_NULL,
 	redRoom = {
-		planetarium = RoomType.ROOM_NULL,
-		cainArcade = RoomType.ROOM_NULL,
-		extraCurse = RoomType.ROOM_NULL
+		[70] = {
+			planetarium = RoomType.ROOM_NULL,
+			cainArcade = RoomType.ROOM_NULL,
+			extraCurse = RoomType.ROOM_NULL
+		},
+		[110] = {
+			secretExit = RoomType.ROOM_NULL
+		}
 	}
 }
 
@@ -172,7 +177,7 @@ function mod.GetRoomRequests()
 
 	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
 
-	curseReplacement = PickSpecialRoom(stage, rollCainArcade)
+	curseReplacement = GreedSpecialRooms.Room or PickSpecialRoom(stage, rollCainArcade)
 	rollCainArcade = GetCainArcade()
 	rollVoodooHead = GetExtraCurseRoom()
 
@@ -190,9 +195,14 @@ function mod.GetRoomRequests()
 	mod.roomsrequested = {
 		curse = curseReplacement,
 		redRoom = {
-			planetarium = rollPlanetarium,
-			cainArcade = rollCainArcade,
-			extraCurse = rollVoodooHead
+			[mod.enum.SHOP_IDX] = {
+				planetarium = rollPlanetarium,
+				cainArcade = rollCainArcade,
+				extraCurse = rollVoodooHead
+			},
+			[mod.enum.EXIT_IDX] = {
+				secretExit = RoomType.ROOM_NULL
+			}
 		}
 	}
 

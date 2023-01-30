@@ -2,15 +2,6 @@ local mod = GreedSpecialRooms
 local game = Game()
 local rng = mod.rng
 
-local PossibleSlots = {
-	DoorSlot.LEFT0,
-	DoorSlot.UP0,
-	DoorSlot.UP1,
-	DoorSlot.RIGHT0
-}
-
-local SHOP_IDX = 70
-
 mod.redRoomsGenerated = {}
 
 function mod.GenerateRedRooms()
@@ -19,27 +10,22 @@ function mod.GenerateRedRooms()
 		local level = game:GetLevel()
 		local oldStage = level:GetStage()
 		local oldStageType = level:GetStageType()
+		level:SetStage(7, 0)
 
 		mod.redRoomsGenerated = {}
-		local tempTable = mod.lib.copyTable(PossibleSlots)
+		local deadends = mod.lib.GetDeadEnds(level:GetRoomByIdx(mod.enum.SHOP_IDX))
+		mod.lib.Shuffle(deadends, rng)
 
-		level:SetStage(7, 0)
-		for i = 1, # PossibleSlots do
-			local idx = rng:RandomInt(#tempTable)+1
-			mod.lib.debugPrint("idx "..idx)
-			local slot = tempTable[idx]
-			mod.lib.debugPrint("slot "..slot)
-			local result = level:MakeRedRoomDoor(SHOP_IDX, slot)
-
+		for i = 1, #deadends do
+			local result = level:MakeRedRoomDoor(mod.enum.SHOP_IDX, deadends[i].Slot)
 			mod.lib.debugPrint("success: "..tostring(result))
 			if result then
-				mod.lib.debugPrint("Generated Red Room at slot "..slot..", now at "..#mod.redRoomsGenerated + 1 .." created")
-				mod.redRoomsGenerated[#mod.redRoomsGenerated+1] = slot
+				mod.lib.debugPrint("Generated Red Room at slot "..deadends[i].Slot..", now at "..#mod.redRoomsGenerated + 1 .." created")
+				mod.redRoomsGenerated[#mod.redRoomsGenerated+1] = deadends[i].Slot
 				if #mod.redRoomsGenerated == mod.redRoomsRequired then
 					break
 				end
 			end
-			table.remove(tempTable, idx)
 		end
 		level:SetStage(oldStage, oldStageType)
 	else

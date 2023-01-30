@@ -2,7 +2,7 @@ GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
 
-mod.debug = false
+mod.debug = true
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false
@@ -10,8 +10,8 @@ mod.rng = RNG()
 
 include("scripts.libs.the-everything-function-rev1")
 
-include("scripts.libs.lib")
 include("scripts.enums.shared")
+include("scripts.libs.lib")
 include("scripts.savedata")
 include("scripts.roomshit")
 include("scripts.pause")
@@ -62,10 +62,10 @@ function mod.Init()
 			--also sets rng seed
 			PreProcess()
 
-			--fills mod.roomrequests
+			--fills mod.roomsrequested
 			mod.GetRoomRequests()
 
-			--takes mod.roomrequests
+			--takes mod.roomsrequested
 			--fills mod.roomdata, mod.redRoomsRequired, and mod.dotransition
 			mod.GetCustomRoomData()
 
