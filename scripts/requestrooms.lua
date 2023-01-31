@@ -116,14 +116,8 @@ local function PickSpecialRoom(stage)
 	return 0
 end
 
-local function GetCustomPlanetariumChance(baseChance, stage, stageType)
+local function GetCustomPlanetariumChance(baseChance, stage)
 	local planetariumBonus = 0
-	local stageOffset = -1
-	--If not Alt Path then reduce by 1. For mods where Greed Downpour is a second floor.
-	if stageType >= StageType.STAGETYPE_REPENTANCE then
-		stageOffset = 0
-	end
-	stage = stage + stageOffset
 
 	if game:GetTreasureRoomVisitCount() < stage*2
 	and not(mod.data.run.visitedPlanetarium or baseChance >= 1 ) then
@@ -169,6 +163,12 @@ local function GetExtraCurseRoom()
 	return RoomType.ROOM_NULL
 end
 
+local SecretExits = {
+	[1] = mod.enum.DOWNPOUR_EXIT,
+	[2] = mod.enum.MINES_EXIT,
+	[3] = mod.enum.MAUSOLEUM_EXIT,
+}
+
 function mod.GetRoomRequests()
 	mod.lib.debugPrint("GetRoomRequests()")
 	local curseReplacement = RoomType.ROOM_NULL
@@ -179,13 +179,22 @@ function mod.GetRoomRequests()
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
-	local stageType = level:GetStageType()
 
-	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
+	--If Alt Path then increment by 1. For mods where Greed Downpour is a second floor.
+	if level:GetStageType() >= StageType.STAGETYPE_REPENTANCE then
+		stage = stage + 1
+	end
+
+	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage)
 
 	curseReplacement = PickSpecialRoom(stage)
 	rollCainArcade = GetCainArcade()
 	rollVoodooHead = GetExtraCurseRoom()
+
+	if SecretExits[stage] then
+		mod.lib.debugPrint("GetRoomRequests(): stage is "..stage..", SecretExits[stage] is "..SecretExits[stage])
+		altPathExit = SecretExits[stage]
+	end
 
 	if not gplan then
 		if PlanetariumChance then

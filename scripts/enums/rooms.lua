@@ -249,5 +249,32 @@ return {
         {id = 10007, weight = 1},
         {id = 10008, weight = 1},
         {id = 10009, weight = .1}
+    },
+    -- Downpour
+    [RoomType.ROOM_SECRET_EXIT] = {
+        {id = 0, weight = 1},
+        {id = 1, weight = 1},
+        {id = 2, weight = 1},
+        {id = 3, weight = 1},
+        {id = 4, weight = 1},
+        {id = 5, weight = 1}
+    },
+    -- Mines
+    [RoomType.ROOM_SECRET_EXIT + 100] = {
+        {id = 100, weight = 1},
+        {id = 101, weight = 1},
+        {id = 102, weight = 1},
+        {id = 103, weight = 1},
+        {id = 104, weight = 1},
+        {id = 105, weight = 1}
+    },
+    -- Mausoleum
+    [RoomType.ROOM_SECRET_EXIT + 200] = {
+        {id = 200, weight = 1},
+        {id = 201, weight = 1},
+        {id = 202, weight = 1},
+        {id = 203, weight = 1},
+        {id = 204, weight = 1},
+        {id = 205, weight = 1}
     }
 }

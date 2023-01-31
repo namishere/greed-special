@@ -5,6 +5,11 @@ mod.enum = {}
 mod.enum.CAIN_ARCADE = RoomType.ROOM_ARCADE + 100
 mod.enum.VOODOO_CURSE = RoomType.ROOM_CURSE + 100
 
+mod.enum.DOWNPOUR_EXIT = RoomType.ROOM_SECRET_EXIT
+mod.enum.MINES_EXIT = RoomType.ROOM_SECRET_EXIT + 100
+mod.enum.MAUSOLEUM_EXIT = RoomType.ROOM_SECRET_EXIT + 200
+mod.enum.CORPSE_EXIT = RoomType.ROOM_SECRET_EXIT + 300
+
 mod.enum.SHOP_IDX = 70
 mod.enum.CURSE_IDX = 83
 mod.enum.EXIT_IDX = 110
@@ -21,7 +26,11 @@ mod.SpecialRoom = {
 	[RoomType.ROOM_PLANETARIUM] = {variant = DoorVariant.DOOR_LOCKED, string = "planetarium"},
 
 	[mod.enum.CAIN_ARCADE] = {variant = DoorVariant.DOOR_LOCKED, string = "arcade"},
-	[mod.enum.VOODOO_CURSE] = {variant = DoorVariant.DOOR_UNLOCKED, string = "curse"}
+	[mod.enum.VOODOO_CURSE] = {variant = DoorVariant.DOOR_UNLOCKED, string = "curse"},
+
+	[mod.enum.DOWNPOUR_EXIT] = {variant = DoorVariant.DOOR_LOCKED, string = "secretexit"},
+	[mod.enum.MINES_EXIT] = {variant = DoorVariant.DOOR_LOCKED, string = "secretexit"},
+	[mod.enum.MAUSOLEUM_EXIT] = {variant = DoorVariant.DOOR_LOCKED, string = "secretexit"},
 }
 
 -- ROOM GEN
