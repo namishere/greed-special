@@ -6,13 +6,12 @@ mod.redRoomsGenerated = {}
 
 function mod.GenerateRedRooms()
 	mod.lib.debugPrint("GenerateRedRooms()")
+	mod.redRoomsGenerated = {}
 	if mod.redRoomsRequired ~= nil then
 		local level = game:GetLevel()
 		local oldStage = level:GetStage()
 		local oldStageType = level:GetStageType()
 		level:SetStage(7, 0)
-
-		mod.redRoomsGenerated = {}
 
 		for k, v in pairs(mod.redRoomsRequired) do
 			mod.lib.debugPrint("GenerateRedRooms(): Start room loop")
