@@ -31,8 +31,8 @@ function alias_table:new(weights)
   local prob = {}
   local alias = {}
   while small_stack[1] and big_stack[1] do -- both non-empty
-      small = table.remove(small_stack)
-      large = table.remove(big_stack)
+      local small = table.remove(small_stack)
+      local large = table.remove(big_stack)
       prob[small] = norm[small]
       alias[small] = large
       norm[large] = norm[large] + norm[small] - 1

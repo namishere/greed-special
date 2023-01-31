@@ -72,7 +72,7 @@ function mod.DoStageTransition()
 			if mod.hasStairway then
 				Isaac.Spawn(1000, 156, 1, STAIRCASE_POS, Vector.Zero, nil)
 			end
-			mod.UpdateMinimap()
+			--mod.UpdateMinimap()
 
 			mod.lib.debugPrint("Calling Update(), pray...")
 			uLevel:Update()

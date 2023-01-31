@@ -8,12 +8,12 @@ local rng = mod.rng
 mod.roomsrequested = {
 	curse = RoomType.ROOM_NULL,
 	redRoom = {
-		[70] = {
+		[mod.enum.SHOP_IDX] = {
 			planetarium = RoomType.ROOM_NULL,
 			cainArcade = RoomType.ROOM_NULL,
 			extraCurse = RoomType.ROOM_NULL
 		},
-		[110] = {
+		[mod.enum.EXIT_IDX] = {
 			secretExit = RoomType.ROOM_NULL
 		}
 	}
@@ -50,9 +50,13 @@ local function PickSpecialRoom(stage)
 		redHeartCount = math.max(redHeartCount, player:GetHearts())
 		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
 
-		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
-		and rng:RandomInt(2) == 0 then
-			cainBirthright = true
+		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0 then
+			if rng:RandomInt(2) == 0 then
+				mod.lib.debugPrint("GetRoomRequests(): Cain Birthright roll successful")
+				cainBirthright = true
+			else
+				mod.lib.debugPrint("GetRoomRequests(): Cain Birthright roll failed")
+			end
 		end
 
 		if player:GetCollectibleNum(CollectibleType.COLLECTIBLE_VOODOO_HEAD) > 0 then
@@ -166,10 +170,12 @@ local function GetExtraCurseRoom()
 end
 
 function mod.GetRoomRequests()
+	mod.lib.debugPrint("GetRoomRequests()")
 	local curseReplacement = RoomType.ROOM_NULL
 	local rollPlanetarium = RoomType.ROOM_NULL
 	local rollCainArcade = RoomType.ROOM_NULL
 	local rollVoodooHead = RoomType.ROOM_NULL
+	local altPathExit = RoomType.ROOM_NULL
 
 	local level = game:GetLevel()
 	local stage = game:GetLevel():GetStage()
@@ -177,7 +183,7 @@ function mod.GetRoomRequests()
 
 	local planetariumChance = GetCustomPlanetariumChance(level:GetPlanetariumChance(), stage, stageType)
 
-	curseReplacement = GreedSpecialRooms.Room or PickSpecialRoom(stage, rollCainArcade)
+	curseReplacement = PickSpecialRoom(stage)
 	rollCainArcade = GetCainArcade()
 	rollVoodooHead = GetExtraCurseRoom()
 
@@ -201,11 +207,11 @@ function mod.GetRoomRequests()
 				extraCurse = rollVoodooHead
 			},
 			[mod.enum.EXIT_IDX] = {
-				secretExit = RoomType.ROOM_NULL
+				secretExit = altPathExit
 			}
 		}
 	}
 
-	mod.lib.debugPrint("curse = "..mod.roomsrequested.curse)
-	mod.lib.debugPrint(dump(mod.roomsrequested.redRoom))
+	mod.lib.debugPrint("GetRoomRequests(): curse = "..mod.roomsrequested.curse)
+	mod.lib.debugPrint("GetRoomRequests(): redRoom = "..dump(mod.roomsrequested.redRoom))
 end

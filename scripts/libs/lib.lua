@@ -23,7 +23,7 @@ function mod.lib.copyTable(sourceTab)
 
 	for i, v in pairs(sourceTab) do
 		if type(v) == "table" then
-			targetTab[i] = script.copyTable(sourceTab[i])
+			targetTab[i] = mod.lib.copyTable(sourceTab[i])
 		else
 			targetTab[i] = sourceTab[i]
 		end
@@ -34,7 +34,7 @@ end
 
 function mod.lib.Shuffle(tbl, rng)
 	for i = #tbl, 2, -1 do
-		local j = rng:RandomInt(1, i)
+		local j = rng:RandomInt(i)+1
 		tbl[i], tbl[j] = tbl[j], tbl[i]
 	end
 	return tbl
