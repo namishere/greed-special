@@ -6,6 +6,11 @@ mod.debug = true
 mod.startroom = nil
 mod.hasStairway = false
 mod.hasCurseOfTheMaze = false
+mod.inSecretExit = false
+
+mod.frameLastInit = 0
+mod.stageLastUpdate = { room = {Stage = 0, StageType = 0}, level = {Stage = 0, StageType = 0} }
+mod.stageLastNewLevel = 0
 mod.rng = RNG()
 
 include("scripts.libs.the-everything-function-rev1")
@@ -41,12 +46,8 @@ local function PreProcess()
 			break
 		end
 	end
-
-	mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetAbsoluteStage()), 35)
 end
 
-
-local frameLastInit = 0
 function mod.Init()
 	-- Do this outside of PreProcess because I want it done asap
 	if not mod.roomInit then
@@ -54,12 +55,25 @@ function mod.Init()
 		mod.roomInit = true
 	end
 
-	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
+	local level = game:GetLevel()
+	if game:IsGreedMode() and level:GetStage() < LevelStage.STAGE7_GREED then
 		mod.lib.debugPrint("GreedSpecialRooms.Init() started")
 
-		if game:GetFrameCount() ~= frameLastInit or game:GetFrameCount() == 0 then
+		mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetAbsoluteStage()), 35)
+
+		mod.lib.debugPrint("GreedSpecialRooms.Init(): inSecretExit is "..tostring(mod.inSecretExit))
+		if mod.inSecretExit then
+			local stRng = mod.rng:RandomInt(1)
+			local stage = level:GetStage()
+			if not (mod.stageLastUpdate.level.Type >= StageType.STAGETYPE_REPENTANCE) then
+				stage = stage - 1
+			end
+			mod.lib.debugPrint("GreedSpecialRooms.Init(): Reseeding for alt path; stage "..(stage)..", type "..StageType.STAGETYPE_REPENTANCE + stRng)
+			mod.inSecretExit = false
+			level:SetStage(stage, StageType.STAGETYPE_REPENTANCE + stRng)
+			Isaac.ExecuteCommand("reseed")
+		elseif game:GetFrameCount() ~= frameLastInit or game:GetFrameCount() == 0 then
 			--fills mod.startroom, mod.hasCurseOfTheMaze, and mod.hasStairway
-			--also sets rng seed
 			PreProcess()
 
 			--fills mod.roomsrequested
@@ -89,19 +103,38 @@ function mod.Init()
 			mod.UpdateMinimap()
 		end
 
-		frameLastInit = game:GetFrameCount()
+		mod.frameLastInit = game:GetFrameCount()
 		mod.lib.debugPrint("GreedSpecialRooms.Init() finished")
 	end
+	mod.stageLastUpdate.level.Stage = level:GetStage()
+	mod.stageLastUpdate.level.Type = level:GetStageType()
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.Init)
 
 function mod.OnNewRoom()
-	if game:GetLevel():GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
-	and game:GetLevel():GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
-		mod.lib.debugPrint("we entered a planetarium")
-		mod.data.run.visitedPlanetarium = true
+	local level = game:GetLevel()
+	if mod.stageLastUpdate.room.Stage == level:GetStage()
+	and mod.stageLastUpdate.room.Type == level:GetStageType() then
+		local roomDesc = game:GetLevel():GetCurrentRoomDesc()
+		if roomDesc.GridIndex > 0 then
+			if roomDesc.Data.Type == RoomType.ROOM_SECRET_EXIT then
+				mod.inSecretExit = true
+				mod.lib.debugPrint("OnNewRoom(): in secret exit, inSecretExit now "..tostring(mod.inSecretExit))
+			else
+				mod.inSecretExit = false
+				mod.lib.debugPrint("OnNewRoom(): not in secret exit, inSecretExit now "..tostring(mod.inSecretExit))
+				if roomDesc.Data.Type == RoomType.ROOM_PLANETARIUM then  --we enter a planetarium in the process of spawning one
+					mod.lib.debugPrint("we entered a planetarium")
+					mod.data.run.visitedPlanetarium = true
+				end
+			end
+		end
+	else
+		mod.lib.debugPrint("OnNewRoom(): level changed since last OnNewRoom()")
 	end
+	mod.stageLastUpdate.room.Stage = level:GetStage()
+	mod.stageLastUpdate.room.Type = level:GetStageType()
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
