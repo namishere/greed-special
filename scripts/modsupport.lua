@@ -4,8 +4,8 @@ local game = Game()
 --External Item Descriptions
 if EID then
 	local function HandleSacrificeRoomEID(descObj)
-		if game:IsGreedMode() and game:GetLevel():GetStage() == LevelStage.STAGE1_GREED
-		and descObj.ObjType == -999 and descObj.ObjVariant == -1 then
+		if game:IsGreedMode()
+		and descObj.ObjType == -999 and EID.GridEntityDescriptions[descObj.ObjVariant] and descObj.Entity then
 			local curCounter = descObj.ObjSubType or 1
 			if curCounter <= 2 then
 				local splitPoint = string.find(descObj.Description, '#', 1)
