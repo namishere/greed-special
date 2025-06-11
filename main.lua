@@ -2,106 +2,114 @@ GreedSpecialRooms = RegisterMod("Greed Mode Special Rooms", 1)
 local mod = GreedSpecialRooms
 local game = Game()
 
-mod.debug = false
-mod.startroom = nil
-mod.hasStairway = false
-mod.hasCurseOfTheMaze = false
 mod.rng = RNG()
 
-include("scripts.libs.the-everything-function-rev1")
+local cainBirthright = false
+local voodooHead = false
 
-include("scripts.libs.lib")
-include("scripts.enums.shared")
-include("scripts.savedata")
-include("scripts.roomshit")
-include("scripts.pause")
-include("scripts.requestrooms")
-include("scripts.getroomdata")
-include("scripts.generateredrooms")
-include("scripts.replaceroomdata")
-include("scripts.dostagetransition")
-include("scripts.modsupport")
+local function PickSpecialRoom(stage)
+	--TODO: convert into flag system
+	local allPlayersFullHealth = true
+	local allPlayersRedHeartsOnly = true
+	local allPlayersSoulHeartsOnly = true
 
-include("scripts.sacrifice")
+	local redHeartCount = 0
+	local soulHeartCount = 0
+	local keyCountTwoOrMore = (Isaac.GetPlayer():GetNumKeys() >= 2)
+	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
-local function PreProcess()
-	local level = game:GetLevel()
-	mod.startroom = game:GetRoom()
+	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
+	voodooHead = false
+	cainBirthright = false
 
-	mod.hasCurseOfTheMaze = false
-	if level:GetCurses() & LevelCurse.CURSE_OF_MAZE > 0 then
-		level:RemoveCurses(LevelCurse.CURSE_OF_MAZE)
-		mod.hasCurseOfTheMaze = true
-	end
-
-	mod.hasStairway = false
 	for i = 0, game:GetNumPlayers() - 1 do
-		if Isaac.GetPlayer(i):HasCollectible(CollectibleType.COLLECTIBLE_STAIRWAY) then
-			mod.hasStairway = true
-			break
+		local player = Isaac.GetPlayer(i)
+		if allPlayersFullHealth and player:GetMaxHearts() > player:GetHearts() + player:GetSoulHearts() then --bone hearts ignored
+			allPlayersFullHealth = false
+		end
+
+		redHeartCount = math.max(redHeartCount, player:GetHearts())
+		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
+
+		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
+		and mod.rng:RandomInt(2) == 0 then
+			cainBirthright = true
+		end
+
+		if player:GetCollectibleNum(CollectibleType.COLLECTIBLE_VOODOO_HEAD) > 0 then
+			voodooHead = true
 		end
 	end
 
-	mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetAbsoluteStage()), 35)
-end
+	allPlayersRedHeartsOnly = (soulHeartCount == 0)
+	allPlayersSoulHeartsOnly = (redHeartCount == 0)
 
-
-local frameLastInit = 0
-function mod.Init()
-	-- Do this outside of PreProcess because I want it done asap
-	if not mod.roomInit then
-		mod.InitRooms()
-		mod.roomInit = true
+	--force roomtype
+	if mod.RoomChoice and mod.RoomChoice > RoomType.ROOM_NULL then
+		return mod.RoomChoice
 	end
 
-	if game:IsGreedMode() and game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
-		mod.lib.debugPrint("GreedSpecialRooms.Init() started")
-
-		if game:GetFrameCount() ~= frameLastInit or game:GetFrameCount() == 0 then
-			--fills mod.startroom, mod.hasCurseOfTheMaze, and mod.hasStairway
-			--also sets rng seed
-			PreProcess()
-
-			--fills mod.roomrequests
-			mod.GetRoomRequests()
-
-			--takes mod.roomrequests
-			--fills mod.roomdata, mod.redRoomsRequired, and mod.dotransition
-			mod.GetCustomRoomData()
-
-			--takes mod.redRoomsRequired and fills mod.redRoomsGenerated
-			mod.GenerateRedRooms()
-
-			--takes mod.roomdata, mod.startroom, and mod.redRoomsGenerated
-			--returns if all red room data was used
-			mod.ReplaceRoomData()
-
-			--takes mod.dotransition and mod.roomsupdated
-			mod.DoStageTransition()
-
+	-- Special Room
+	if mod.rng:RandomInt(7) == 0 or (allPlayersFullHealth and mod.rng:RandomInt(4) == 0) then
+		if mod.rng:RandomInt(50) == 0 or (keyCountTwoOrMore and mod.rng:RandomInt(5) == 0) then
+			return RoomType.ROOM_DICE
 		else
-			mod.lib.debugPrint("hey, what the fuck now? get out of here")
-			for _,v in ipairs(mod.roomsupdated) do
-				if MinimapAPI then
-					MinimapAPI:GetRoomByIdx(v, 0):SyncRoomDescriptor()
+			return RoomType.ROOM_SACRIFICE
+		end
+	elseif mod.rng:RandomInt(20) == 0 then
+		return RoomType.ROOM_LIBRARY
+	elseif mod.rng:RandomInt(2) ~= 0 or (devilRoomVisited and mod.rng:RandomInt(4) ~= 0) then
+		--if rng:RandomInt(4) == 0 or (stage == LevelStage.STAGE1_GREED and rng:RandomInt(4) == 0) then
+			--return RoomType.ROOM_MINIBOSS
+		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and mod.rng:RandomInt(2) == 0 then
+			return RoomType.ROOM_CHALLENGE
+		else
+			-- WOW the logic for arcades & vaults is a fucking headache
+			if game:GetLevel():GetStage() % 2 == 0 then
+				local vaultBaseChance = (mod.rng:RandomInt(10) == 0 or (keyCountTwoOrMore and mod.rng:RandomInt(3) == 0))
+				if vaultBaseChance then
+					if not coinCountFifteenOrMore or keyCountTwoOrMore then
+						return RoomType.ROOM_CHEST
+					end
+				elseif coinCountFifteenOrMore and not cainBirthright then
+					return RoomType.ROOM_ARCADE
 				end
 			end
-			mod.UpdateMinimap()
+
+			--Arcade/Vault logic can fall through without generating either
+			if mod.rng:RandomInt(50) == 0
+			or (((allPlayersRedHeartsOnly and redHeartCount < 4)
+			or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
+			and mod.rng:RandomInt(5) == 0) then
+				if mod.rng:RandomInt(2) == 0 then
+					return RoomType.ROOM_ISAACS
+				else
+					return RoomType.ROOM_BARREN
+				end
+			end
 		end
+	end
+	-- Default to Curse Room
+	return 0
+end
 
-		frameLastInit = game:GetFrameCount()
-		mod.lib.debugPrint("GreedSpecialRooms.Init() finished")
+function mod.LevelPlaceRoom(lgr, rcr, seed)
+	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE then
+		mod.rng:SetSeed(game:GetSeeds():GetStageSeed(game:GetLevel():GetAbsoluteStage()), 35)
+		local replacement = PickSpecialRoom()
+		if replacement ~= 0 then
+			print("----------")
+			print("lgr:")
+			print(lgr)
+			print(lgr.Type)
+			print("rcr:")
+			print(rcr)
+			print(rcr.Type)
+			print("seed:")
+			print(seed)
+			return RoomConfigHolder.GetRandomRoom(seed, false, StbType.SPECIAL_ROOMS, replacement, rcr.Shape)
+		end
 	end
 end
 
-mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.Init)
-
-function mod.OnNewRoom()
-	if game:GetLevel():GetCurrentRoomDesc().Data.Type == RoomType.ROOM_PLANETARIUM
-	and game:GetLevel():GetCurrentRoomDesc().GridIndex > 0 then --we enter a planetarium in the process of spawning one
-		mod.lib.debugPrint("we entered a planetarium")
-		mod.data.run.visitedPlanetarium = true
-	end
-end
-
-mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
+mod:AddCallback(ModCallbacks.MC_PRE_LEVEL_PLACE_ROOM, mod.LevelPlaceRoom)
