@@ -79,49 +79,37 @@ local function PickSpecialRoom(stage)
 				roomSubType = RoomSubType.CHALLENGE_BOSS
 			end
 			return RoomType.ROOM_CHALLENGE
-		else
-			-- WOW the logic for arcades & vaults is a fucking headache
-			if game:GetLevel():GetStage() % 2 == 0 then
-				local vaultBaseChance = (mod.rng:RandomInt(10) == 0 or (keyCountTwoOrMore and mod.rng:RandomInt(3) == 0))
-				if vaultBaseChance then
-					if not coinCountFifteenOrMore or keyCountTwoOrMore then
-						return RoomType.ROOM_CHEST
-					end
-				elseif coinCountFifteenOrMore and not cainBirthright then
-					return RoomType.ROOM_ARCADE
-				end
+		elseif mod.rng:RandomInt(10) == 0 or (keyCountTwoOrMore and mod.rng:RandomInt(3) == 0) then
+			if not coinCountFifteenOrMore or keyCountTwoOrMore then
+				return RoomType.ROOM_CHEST
+			elseif coinCountFifteenOrMore and not cainBirthright then
+				return RoomType.ROOM_ARCADE
 			end
-
-			--Arcade/Vault logic can fall through without generating either
-			if mod.rng:RandomInt(50) == 0
-			or (((allPlayersRedHeartsOnly and redHeartCount < 4)
-			or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
-			and mod.rng:RandomInt(5) == 0) then
-				if mod.rng:RandomInt(2) == 0 then
-					return RoomType.ROOM_ISAACS
-				else
-					return RoomType.ROOM_BARREN
-				end
+		elseif mod.rng:RandomInt(50) == 0
+		or (((allPlayersRedHeartsOnly and redHeartCount < 4)
+		or (allPlayersSoulHeartsOnly and soulHeartCount <= 4))
+		and mod.rng:RandomInt(5) == 0) then
+			if mod.rng:RandomInt(2) == 0 then
+				return RoomType.ROOM_ISAACS
+			else
+				return RoomType.ROOM_BARREN
 			end
 		end
-	end
-
-	if voodooHead then
-		roomSubType = RoomSubType.CURSE_VOODOO_HEAD
-		return RoomType.ROOM_CURSE
 	end
 
 	-- Default to Curse Room
-	return 0
+	if voodooHead then
+		roomSubType = RoomSubType.CURSE_VOODOO_HEAD
+	end
+	return RoomType.ROOM_CURSE -- Have to replace it instead of just letting regular greed mode handle it so voodoo head rooms don't spawn without the item
 end
 
 function mod.LevelPlaceRoom(lgr, rcr, seed)
-	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE and rcr.Subtype ~= RoomSubType.CURSE_VOODOO_HEAD then
+	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE then -- TODO: figure out a way to get roomindex from roomconfig_room, so i only have to check that
 		mod.rng:SetSeed(seed, 35)
 		local replacement = PickSpecialRoom(game:GetLevel():GetStage())
-		if replacement ~= 0 then
-			return RoomConfigHolder.GetRandomRoom(seed, true, StbType.SPECIAL_ROOMS, replacement, rcr.Shape, nil, nil, nil, nil, rcr.Doors, roomSubType)
-		end
+		print("special room: ".. replacement)
+		return RoomConfigHolder.GetRandomRoom(seed, true, StbType.SPECIAL_ROOMS, replacement, rcr.Shape, nil, nil, nil, nil, rcr.Doors, roomSubType)
 	end
 end
 
@@ -187,7 +175,15 @@ end
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.GenerateExtraRooms)
 
-function mod.PlanetariumChanceCalculate()
+function mod.PlanetariumTreasurePenalty()
+	if game:IsGreedMode() then
+		return math.floor(game:GetTreasureRoomVisitCount() / 2) -- Its not perfectly even if you just enter the silver treasure room or something but it probably fits greed mode better this way
+	end
+end
+
+mod:AddCallback(ModCallbacks.MC_PRE_PLANETARIUM_APPLY_TREASURE_PENALTY, mod.PlanetariumTreasurePenalty)
+
+function mod.PlanetariumChanceCalculate(chance)
 	if game:IsGreedMode() then
 		if ((not PlayerManager.AnyoneHasTrinket(TrinketType.TRINKET_TELESCOPE_LENS)) or game:GetLevel():GetStage() > LevelStage.STAGE6_GREED) and game:GetLevel():GetStage() > LevelStage.STAGE5_GREED then
 			return 0.0
