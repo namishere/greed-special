@@ -6,7 +6,6 @@ mod.rng = RNG()
 
 Isaac.GetItemConfig():GetTrinket(TrinketType.TRINKET_TELESCOPE_LENS).Tags = Isaac.GetItemConfig():GetTrinket(TrinketType.TRINKET_TELESCOPE_LENS).Tags & ~ItemConfig.TAG_NO_GREED
 
-
 local function shuffle(tbl)
   for i = #tbl, 2, -1 do
     local j = mod.rng:RandomInt(i)+1
@@ -15,9 +14,12 @@ local function shuffle(tbl)
   return tbl
 end
 
+local voodooHead = false
 local cainBirthright = false
+local roomSubType = 0
 
 local function PickSpecialRoom(stage)
+	print(game:GetRoom():GetShopLevel())
 	--TODO: convert into flag system
 	local allPlayersFullHealth = true
 	local allPlayersRedHeartsOnly = true
@@ -29,7 +31,11 @@ local function PickSpecialRoom(stage)
 	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
 	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
+
+	voodooHead = false
 	cainBirthright = false
+
+	roomSubType = 0
 
 	for i = 0, game:GetNumPlayers() - 1 do
 		local player = Isaac.GetPlayer(i)
@@ -39,11 +45,13 @@ local function PickSpecialRoom(stage)
 
 		redHeartCount = math.max(redHeartCount, player:GetHearts())
 		soulHeartCount = math.max(soulHeartCount, player:GetSoulHearts())
+	end
 
-		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
-		and mod.rng:RandomInt(2) == 0 then
-			cainBirthright = true
-		end
+	if PlayerManager.AnyoneHasCollectible(CollectibleType.COLLECTIBLE_VOODOO_HEAD) then
+		voodooHead = true
+	end
+	if PlayerManager.AnyPlayerTypeHasBirthright(PlayerType.PLAYER_CAIN) and mod.rng:RandomInt(2) == 0 then
+		cainBirthright = true
 	end
 
 	allPlayersRedHeartsOnly = (soulHeartCount == 0)
@@ -67,6 +75,9 @@ local function PickSpecialRoom(stage)
 		--if rng:RandomInt(4) == 0 or (stage == LevelStage.STAGE1_GREED and rng:RandomInt(4) == 0) then
 			--return RoomType.ROOM_MINIBOSS
 		if allPlayersFullHealth and stage > LevelStage.STAGE1_GREED and mod.rng:RandomInt(2) == 0 then
+			if mod.rng:RandomInt(2) == 0 then -- eh
+				roomSubType = RoomSubType.CHALLENGE_BOSS
+			end
 			return RoomType.ROOM_CHALLENGE
 		else
 			-- WOW the logic for arcades & vaults is a fucking headache
@@ -94,16 +105,22 @@ local function PickSpecialRoom(stage)
 			end
 		end
 	end
+
+	if voodooHead then
+		roomSubType = RoomSubType.CURSE_VOODOO_HEAD
+		return RoomType.ROOM_CURSE
+	end
+
 	-- Default to Curse Room
 	return 0
 end
 
 function mod.LevelPlaceRoom(lgr, rcr, seed)
-	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE then
+	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE and rcr.Subtype ~= RoomSubType.CURSE_VOODOO_HEAD then
 		mod.rng:SetSeed(seed, 35)
 		local replacement = PickSpecialRoom(game:GetLevel():GetStage())
 		if replacement ~= 0 then
-			return RoomConfigHolder.GetRandomRoom(seed, true, StbType.SPECIAL_ROOMS, replacement, rcr.Shape, nil, nil, nil, nil, rcr.Doors)
+			return RoomConfigHolder.GetRandomRoom(seed, true, StbType.SPECIAL_ROOMS, replacement, rcr.Shape, nil, nil, nil, nil, rcr.Doors, roomSubType)
 		end
 	end
 end
@@ -114,32 +131,61 @@ local PossibleIndexes = {
 	69,
 	57,
 	58,
-	72, -- shop with telescope lens only
-	85, -- shop with telescope lens only
-	98, -- shop with telescope lens only
+	72, -- shop only
+	85, -- shop only
+	98, -- shop only
 	99
 }
 
-function mod.GeneratePlanetariumRoom()
+function mod.GenerateExtraRooms()
 	local level = game:GetLevel()
 	if game:IsGreedMode() then
 		mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetDungeonPlacementSeed()), 35)
+		local roomConfig
+		local shuffledIndexes
+		if game:GetLevel():GetStage() < LevelStage.STAGE7_GREED then
+			if voodooHead then
+				roomConfig = RoomConfigHolder.GetRandomRoom(level:GetDungeonPlacementSeed(), true, StbType.SPECIAL_ROOMS, RoomType.ROOM_CURSE, nil, nil, nil, nil, nil, nil, RoomSubType.CURSE_VOODOO_HEAD)
+				shuffledIndexes = shuffle(PossibleIndexes)
+				for _, idx in ipairs(shuffledIndexes) do
+					print("Trying to place Extra Curse at index: " .. idx)
+					local room = level:TryPlaceRoom(roomConfig, idx, -1, level:GetDungeonPlacementSeed(), false, true, false)
+					if room then
+						print("Extra Curse placed at index: " .. idx)
+						break
+					end
+				end
+			end
+			if cainBirthright then
+				roomConfig = RoomConfigHolder.GetRandomRoom(level:GetDungeonPlacementSeed(), true, StbType.SPECIAL_ROOMS, RoomType.ROOM_ARCADE, nil, nil, nil, nil, nil, nil, RoomSubType.ARCADE_CAIN)
+				shuffledIndexes = shuffle(PossibleIndexes)
+				for _, idx in ipairs(shuffledIndexes) do
+					print("Trying to place Cain Arcade at index: " .. idx)
+					local room = level:TryPlaceRoom(roomConfig, idx, -1, level:GetDungeonPlacementSeed(), false, true, false)
+					if room then
+						print("Cain Arcade placed at index: " .. idx)
+						break
+					end
+				end
+			end
+		end
+
 		if mod.rng:RandomFloat() < game:GetLevel():GetPlanetariumChance() then
-			local roomConfig = RoomConfigHolder.GetRandomRoom(level:GetDungeonPlacementSeed(), true, StbType.SPECIAL_ROOMS, RoomType.ROOM_PLANETARIUM)
-			local shuffledIndexes = shuffle(PossibleIndexes)
+			roomConfig = RoomConfigHolder.GetRandomRoom(level:GetDungeonPlacementSeed(), true, StbType.SPECIAL_ROOMS, RoomType.ROOM_PLANETARIUM)
+			shuffledIndexes = shuffle(PossibleIndexes)
 			for _, idx in ipairs(shuffledIndexes) do
 				print("Trying to place Planetarium at index: " .. idx)
 				local room = level:TryPlaceRoom(roomConfig, idx, -1, level:GetDungeonPlacementSeed(), false, true, false)
 				if room then
 					print("Planetarium placed at index: " .. idx)
-					return
+					break
 				end
 			end
 		end
 	end
 end
 
-mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.GeneratePlanetariumRoom)
+mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.GenerateExtraRooms)
 
 function mod.PlanetariumChanceCalculate()
 	if game:IsGreedMode() then
