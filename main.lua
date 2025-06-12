@@ -4,8 +4,18 @@ local game = Game()
 
 mod.rng = RNG()
 
+Isaac.GetItemConfig():GetTrinket(TrinketType.TRINKET_TELESCOPE_LENS).Tags = Isaac.GetItemConfig():GetTrinket(TrinketType.TRINKET_TELESCOPE_LENS).Tags & ~ItemConfig.TAG_NO_GREED
+
+
+local function shuffle(tbl)
+  for i = #tbl, 2, -1 do
+    local j = mod.rng:RandomInt(i)+1
+    tbl[i], tbl[j] = tbl[j], tbl[i]
+  end
+  return tbl
+end
+
 local cainBirthright = false
-local voodooHead = false
 
 local function PickSpecialRoom(stage)
 	--TODO: convert into flag system
@@ -19,7 +29,6 @@ local function PickSpecialRoom(stage)
 	local coinCountFifteenOrMore = (Isaac.GetPlayer():GetNumCoins() >= 15)
 
 	local devilRoomVisited = game:GetStateFlag(GameStateFlag.STATE_DEVILROOM_VISITED)
-	voodooHead = false
 	cainBirthright = false
 
 	for i = 0, game:GetNumPlayers() - 1 do
@@ -34,10 +43,6 @@ local function PickSpecialRoom(stage)
 		if player:GetPlayerType() == PlayerType.PLAYER_CAIN and player:GetCollectibleNum(CollectibleType.COLLECTIBLE_BIRTHRIGHT) > 0
 		and mod.rng:RandomInt(2) == 0 then
 			cainBirthright = true
-		end
-
-		if player:GetCollectibleNum(CollectibleType.COLLECTIBLE_VOODOO_HEAD) > 0 then
-			voodooHead = true
 		end
 	end
 
@@ -95,21 +100,53 @@ end
 
 function mod.LevelPlaceRoom(lgr, rcr, seed)
 	if game:IsGreedMode() and rcr.Type == RoomType.ROOM_CURSE then
-		mod.rng:SetSeed(game:GetSeeds():GetStageSeed(game:GetLevel():GetAbsoluteStage()), 35)
-		local replacement = PickSpecialRoom()
+		mod.rng:SetSeed(seed, 35)
+		local replacement = PickSpecialRoom(game:GetLevel():GetStage())
 		if replacement ~= 0 then
-			print("----------")
-			print("lgr:")
-			print(lgr)
-			print(lgr.Type)
-			print("rcr:")
-			print(rcr)
-			print(rcr.Type)
-			print("seed:")
-			print(seed)
-			return RoomConfigHolder.GetRandomRoom(seed, false, StbType.SPECIAL_ROOMS, replacement, rcr.Shape)
+			return RoomConfigHolder.GetRandomRoom(seed, true, StbType.SPECIAL_ROOMS, replacement, rcr.Shape, nil, nil, nil, nil, rcr.Doors)
 		end
 	end
 end
 
 mod:AddCallback(ModCallbacks.MC_PRE_LEVEL_PLACE_ROOM, mod.LevelPlaceRoom)
+
+local PossibleIndexes = {
+	69,
+	57,
+	58,
+	72, -- shop with telescope lens only
+	85, -- shop with telescope lens only
+	98, -- shop with telescope lens only
+	99
+}
+
+function mod.GeneratePlanetariumRoom()
+	local level = game:GetLevel()
+	if game:IsGreedMode() then
+		mod.rng:SetSeed(game:GetSeeds():GetStageSeed(level:GetDungeonPlacementSeed()), 35)
+		if mod.rng:RandomFloat() < game:GetLevel():GetPlanetariumChance() then
+			local roomConfig = RoomConfigHolder.GetRandomRoom(level:GetDungeonPlacementSeed(), true, StbType.SPECIAL_ROOMS, RoomType.ROOM_PLANETARIUM)
+			local shuffledIndexes = shuffle(PossibleIndexes)
+			for _, idx in ipairs(shuffledIndexes) do
+				print("Trying to place Planetarium at index: " .. idx)
+				local room = level:TryPlaceRoom(roomConfig, idx, -1, level:GetDungeonPlacementSeed(), false, true, false)
+				if room then
+					print("Planetarium placed at index: " .. idx)
+					return
+				end
+			end
+		end
+	end
+end
+
+mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.GeneratePlanetariumRoom)
+
+function mod.PlanetariumChanceCalculate()
+	if game:IsGreedMode() then
+		if ((not PlayerManager.AnyoneHasTrinket(TrinketType.TRINKET_TELESCOPE_LENS)) or game:GetLevel():GetStage() > LevelStage.STAGE6_GREED) and game:GetLevel():GetStage() > LevelStage.STAGE5_GREED then
+			return 0.0
+		end
+	end
+end
+
+mod:AddCallback(ModCallbacks.MC_POST_PLANETARIUM_CALCULATE, mod.PlanetariumChanceCalculate)
